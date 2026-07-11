@@ -74,3 +74,4 @@ EnvMonitor/secrets.h
 # Cloudflare Worker
 cloud/node_modules/
 cloud/.wrangler/
+cloud/wrangler.toml
