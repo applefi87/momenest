@@ -178,12 +178,12 @@ void drawValues() {
     tft.drawString(buf, X, 135);
 
     tft.setTextColor(TFT_ORANGE, TFT_BLACK);
-    int soilPct = constrain(map(soilRaw, 4095, 1200, 0, 100), 0, 100); // 依實測校正
+    int soilPct = constrain(map(soilRaw, 4095, 1050, 0, 100), 0, 100); // 依實測校正
     snprintf(buf, sizeof(buf), "%d (%d%%)", soilRaw, soilPct);
     tft.drawString(buf, X, 175);
 
     tft.setTextColor(TFT_SKYBLUE, TFT_BLACK);
-    int lvlPct = constrain(map(waterRaw, 0, 2600, 0, 100), 0, 100);    // 依實測校正
+    int lvlPct = constrain(map(waterRaw, 500, 1770, 0, 100), 0, 100);    // 依實測校正
     snprintf(buf, sizeof(buf), "%d (%d%%)", waterRaw, lvlPct);
     tft.drawString(buf, X, 215);
 
