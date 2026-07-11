@@ -67,3 +67,10 @@ vcpkg_installed/
 # test output & cache
 Testing/
 .cache/
+
+# 機密設定 (勿 commit)
+EnvMonitor/secrets.h
+
+# Cloudflare Worker
+cloud/node_modules/
+cloud/.wrangler/
