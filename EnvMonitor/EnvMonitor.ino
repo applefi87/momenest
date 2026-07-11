@@ -42,8 +42,10 @@ public:
         bcfg.freq_write = 27000000;   // 寫入 27MHz (穩定後可試 40MHz)
         bcfg.freq_read  = 16000000;
         bcfg.pin_sclk   = 18;         // SCK
-        bcfg.pin_mosi   = 23;         // MOSI (SDI/TDI 合併)
-        bcfg.pin_miso   = 19;         // MISO (SDO/TDO 合併)
+        bcfg.pin_mosi   = 23;         // MOSI (螢幕 SDI 與 觸控 T_DIN 合併)
+        bcfg.pin_miso   = 19;         // MISO：只接觸控 T_DO！
+                                      // 螢幕 SDO 千萬不要接——ILI9488 硬體缺陷：
+                                      // CS 拉高後 SDO 不會放開 MISO 線，會把觸控訊號壓死
         bcfg.pin_dc     = 2;          // TFT_DC
         _bus.config(bcfg);
         _panel.setBus(&_bus);

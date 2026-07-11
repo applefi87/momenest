@@ -7,8 +7,10 @@ ESP32 + 3.5" TFT 觸控螢幕的環境監測系統，每秒更新空氣溫濕度
 | 模組 | 介面 | 腳位 |
 |------|------|------|
 | ESP32 NodeMCU-32 (ESP32-WROOM-E, 38pin) | — | — |
-| 3.5" TFT ILI9488 | VSPI | MOSI=23, MISO=19, SCK=18, CS=15, DC=2, RST=4 |
-| XPT2046 觸控 | VSPI (共用) | CS=5, IRQ(PEN)=16 |
+| 3.5" TFT ILI9488 | VSPI | MOSI=23, SCK=18, CS=15, DC=2, RST=4, **SDO 不接**(見下) |
+| XPT2046 觸控 | VSPI (共用) | T_DIN=23, T_DO=19, T_CLK=18, CS=5, IRQ(PEN)=16 |
+
+> **重要：螢幕的 SDO/MISO 腳不要接。** ILI9488 模組有已知硬體缺陷：CS 拉高後 SDO 不會進入高阻抗，會持續佔住 MISO 線，導致共用匯流排的 XPT2046 觸控完全讀不到資料。螢幕只寫不讀，SDO 不接沒有任何影響；MISO (GPIO19) 只接觸控的 T_DO。
 | SHT45 空氣溫濕度 | I2C | SDA=21, SCL=22 |
 | DS18B20 水溫 | 1-Wire | DATA=25 |
 | 土壤濕度 | Analog | AO=32 |
