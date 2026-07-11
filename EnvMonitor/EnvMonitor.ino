@@ -212,9 +212,9 @@ void uploadToCloud() {
     // 組 JSON；NAN 以 null 送出，資料庫存 NULL 代表該次讀取失敗
     char body[192];
     char tA[16], tH[16], tW[16];
-    isnan(airTemp)   ? strcpy(tA, "null") : snprintf(tA, sizeof(tA), "%.2f", airTemp);
-    isnan(airHum)    ? strcpy(tH, "null") : snprintf(tH, sizeof(tH), "%.2f", airHum);
-    isnan(waterTemp) ? strcpy(tW, "null") : snprintf(tW, sizeof(tW), "%.2f", waterTemp);
+    if (isnan(airTemp))   { strcpy(tA, "null"); } else { snprintf(tA, sizeof(tA), "%.2f", airTemp); }
+    if (isnan(airHum))    { strcpy(tH, "null"); } else { snprintf(tH, sizeof(tH), "%.2f", airHum); }
+    if (isnan(waterTemp)) { strcpy(tW, "null"); } else { snprintf(tW, sizeof(tW), "%.2f", waterTemp); }
     snprintf(body, sizeof(body),
         "{\"air_temp\":%s,\"air_hum\":%s,\"water_temp\":%s,\"soil\":%d,\"water_level\":%d}",
         tA, tH, tW, soilRaw, waterRaw);
