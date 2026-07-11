@@ -45,6 +45,13 @@ SHT45 使用內建 Wire 以原始 I2C 指令操作（觸發/讀取分離、CRC-8
 - T=800ms：統一讀取所有結果（>750ms 確保 DS18B20 12-bit 轉換完成）+ ADC，更新螢幕
 - 觸控隨時輪詢（LovyanGFX 用 IRQ 腳快速判斷），點擊時左下角顯示 X/Y 座標
 
+## 雲端上傳（Cloudflare Worker + D1）
+
+- 每 10 秒 HTTPS POST 一筆到 Worker（部署方式見 `../cloud/README.md`）
+- **設定**：複製 `secrets.h.example` 為 `secrets.h`，填入 WiFi 帳密、Worker 網址、API 密鑰（此檔已被 .gitignore 排除）
+- WiFi 非阻塞連線 + 每 15 秒自動重連；斷網時本地螢幕照常運作
+- 時間戳由伺服器補上，ESP32 不需 NTP
+
 ## 待校正項目
 
 - 土壤濕度 `map(soilRaw, 4095, 1200, ...)`：依實測乾/濕端點調整

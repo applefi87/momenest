@@ -21,6 +21,10 @@
 #include <Wire.h>
 #include <OneWire.h>
 #include <DallasTemperature.h>
+#include <WiFi.h>
+#include <WiFiClientSecure.h>
+#include <HTTPClient.h>
+#include "secrets.h"   // WiFi 帳密 + API 網址/密鑰 (複製 secrets.h.example 為 secrets.h 填入)
 
 // ==========================================
 // LovyanGFX 硬體設定 (腳位全在這裡，不動 library)
@@ -86,6 +90,7 @@ LGFX tft;
 
 const unsigned long CYCLE_PERIOD  = 1000;  // 1Hz 週期
 const unsigned long MEASURE_DELAY = 800;   // T=800ms 讀取
+const uint8_t UPLOAD_EVERY_N_CYCLES = 10;  // 每 10 個週期 (10 秒) 上傳一次雲端
 
 OneWire oneWire(PIN_ONEWIRE);
 DallasTemperature ds18b20(&oneWire);
@@ -96,6 +101,9 @@ unsigned long lastTouchDraw = 0;
 
 float airTemp = NAN, airHum = NAN, waterTemp = NAN;
 int soilRaw = 0, waterRaw = 0;
+
+uint8_t cycleCount = 0;                    // 量測週期計數 (供上傳節流)
+unsigned long lastWifiRetry = 0;           // WiFi 重連節流
 
 // ==========================================
 // SHT45 觸發 / CRC / 讀取 (仿 OMNI-TEC 觸發讀取分離)
@@ -183,6 +191,52 @@ void drawValues() {
 }
 
 // ==========================================
+// 雲端上傳：HTTPS POST 到 Cloudflare Worker
+// 注意：HTTP 請求本身是阻塞的 (~0.3-1 秒)，但每 10 秒才發生一次，
+//       且設 3 秒逾時保底；期間觸控/螢幕會短暫停頓，可接受。
+//       時間戳由伺服器端補上，ESP32 不需 NTP 對時。
+// ==========================================
+void uploadToCloud() {
+    if (WiFi.status() != WL_CONNECTED) return;   // 沒網路直接跳過，不影響本地顯示
+
+    WiFiClientSecure client;
+    client.setInsecure();          // 跳過憑證驗證 (簡化；Cloudflare 傳輸仍為 TLS 加密)
+    HTTPClient http;
+    http.setTimeout(3000);         // 3 秒逾時，避免網路異常卡住主迴圈太久
+    http.setConnectTimeout(3000);
+
+    if (!http.begin(client, API_URL)) return;
+    http.addHeader("Content-Type", "application/json");
+    http.addHeader("X-API-Key", API_KEY);        // 只有持密鑰的本機能寫入
+
+    // 組 JSON；NAN 以 null 送出，資料庫存 NULL 代表該次讀取失敗
+    char body[192];
+    char tA[16], tH[16], tW[16];
+    isnan(airTemp)   ? strcpy(tA, "null") : snprintf(tA, sizeof(tA), "%.2f", airTemp);
+    isnan(airHum)    ? strcpy(tH, "null") : snprintf(tH, sizeof(tH), "%.2f", airHum);
+    isnan(waterTemp) ? strcpy(tW, "null") : snprintf(tW, sizeof(tW), "%.2f", waterTemp);
+    snprintf(body, sizeof(body),
+        "{\"air_temp\":%s,\"air_hum\":%s,\"water_temp\":%s,\"soil\":%d,\"water_level\":%d}",
+        tA, tH, tW, soilRaw, waterRaw);
+
+    int code = http.POST(body);
+    Serial.printf("Upload HTTP %d\n", code);
+    http.end();
+}
+
+// ==========================================
+// WiFi 斷線自動重連 (非阻塞，每 15 秒最多試一次)
+// ==========================================
+void ensureWifi() {
+    if (WiFi.status() == WL_CONNECTED) return;
+    if (millis() - lastWifiRetry < 15000) return;
+    lastWifiRetry = millis();
+    Serial.println("WiFi reconnecting...");
+    WiFi.disconnect();
+    WiFi.begin(WIFI_SSID, WIFI_PASS);   // begin 為非阻塞，不等待結果
+}
+
+// ==========================================
 // setup
 // ==========================================
 void setup() {
@@ -201,6 +255,11 @@ void setup() {
     tft.init();
     tft.setRotation(1);                    // 橫向 480x320
     drawStaticLabels();
+
+    // ---- WiFi (非阻塞啟動：不等連線完成，連上前僅本地顯示) ----
+    WiFi.mode(WIFI_STA);
+    WiFi.setAutoReconnect(true);
+    WiFi.begin(WIFI_SSID, WIFI_PASS);
 
     lastCycleStartTime = millis();
     Serial.println("Env Monitor (LovyanGFX) ready.");
@@ -248,5 +307,14 @@ void loop() {
         drawValues();
         Serial.printf("AirT=%.2f AirH=%.2f WaterT=%.2f Soil=%d Level=%d\n",
                       airTemp, airHum, waterTemp, soilRaw, waterRaw);
+
+        // ---- 每 10 個週期 (10 秒) 上傳雲端一次 ----
+        if (++cycleCount >= UPLOAD_EVERY_N_CYCLES) {
+            cycleCount = 0;
+            uploadToCloud();
+        }
     }
+
+    // ---- WiFi 斷線監測與重連 (非阻塞) ----
+    ensureWifi();
 }
