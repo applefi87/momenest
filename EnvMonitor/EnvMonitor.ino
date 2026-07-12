@@ -46,13 +46,13 @@ public:
         bcfg.pin_miso   = 19;         // MISO：只接觸控 T_DO！
                                       // 螢幕 SDO 千萬不要接——ILI9488 硬體缺陷：
                                       // CS 拉高後 SDO 不會放開 MISO 線，會把觸控訊號壓死
-        bcfg.pin_dc     = 2;          // TFT_DC
+        bcfg.pin_dc     = 27;          // TFT_DC
         _bus.config(bcfg);
         _panel.setBus(&_bus);
 
         // --- ILI9488 面板 ---
         auto pcfg = _panel.config();
-        pcfg.pin_cs   = 15;           // TFT_CS
+        pcfg.pin_cs   = 14;           // TFT_CS
         pcfg.pin_rst  = 4;            // TFT_RST
         pcfg.panel_width  = 320;
         pcfg.panel_height = 480;
