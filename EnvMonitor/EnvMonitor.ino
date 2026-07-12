@@ -83,8 +83,9 @@ LGFX tft;
 // 感測器腳位與參數
 // ==========================================
 #define PIN_ONEWIRE   25
-#define PIN_SOIL      32
+#define PIN_SOIL      35
 #define PIN_WATER_LVL 33
+#define PIN_WATER_PWR 32
 #define PIN_SDA       21
 #define PIN_SCL       22
 #define SHT45_ADDR    0x44
@@ -93,6 +94,9 @@ LGFX tft;
 const unsigned long CYCLE_PERIOD  = 1000;  // 1Hz 週期
 const unsigned long MEASURE_DELAY = 800;   // T=800ms 讀取
 const uint8_t UPLOAD_EVERY_N_CYCLES = 10;  // 每 10 個週期 (10 秒) 上傳一次雲端
+
+const unsigned long WATER_PWR_LEAD = 1;  // 讀取前 Xms 上電，目前測試不需要提前通電，因此只留 1ms 供確保打開有確實到3.3V
+bool waterPwrOn = false;
 
 OneWire oneWire(PIN_ONEWIRE);
 DallasTemperature ds18b20(&oneWire);
@@ -247,6 +251,11 @@ void setup() {
     Wire.begin(PIN_SDA, PIN_SCL);
     Wire.setTimeOut(3);                    // I2C 逾時，防卡死 (仿 OMNI-TEC F-FW-009)
 
+    pinMode(PIN_WATER_PWR, OUTPUT);
+    digitalWrite(PIN_WATER_PWR, LOW);
+
+
+
     ds18b20.begin();
     ds18b20.setResolution(12);
     ds18b20.setWaitForConversion(false);   // 非阻塞轉換
@@ -294,6 +303,13 @@ void loop() {
         ds18b20.requestTemperatures();     // ~750ms，非阻塞
     }
 
+    // ---- T=預備：觸發量測----
+    if (isMeasuring && !waterPwrOn &&
+    (currentMillis - lastCycleStartTime >= MEASURE_DELAY - WATER_PWR_LEAD)) {
+    digitalWrite(PIN_WATER_PWR, HIGH);
+    waterPwrOn = true;
+    }
+
     // ---- T=800ms：統一讀取並更新螢幕 ----
     if (isMeasuring && (currentMillis - lastCycleStartTime >= MEASURE_DELAY)) {
         isMeasuring = false;
@@ -305,6 +321,10 @@ void loop() {
 
         soilRaw  = analogRead(PIN_SOIL);
         waterRaw = analogRead(PIN_WATER_LVL);
+
+        // 水位
+        digitalWrite(PIN_WATER_PWR, LOW);
+        waterPwrOn = false;
 
         drawValues();
         Serial.printf("AirT=%.2f AirH=%.2f WaterT=%.2f Soil=%d Level=%d\n",
