@@ -338,6 +338,9 @@ void loop() {
         ds18b20.requestTemperatures();     // ~750ms，非阻塞
     }
     
+    // 設定合適的感測範圍，針對該感測器全通/否的優化
+    analogSetPinAttenuation(PIN_WATER_LVL, ADC_2_5db);
+    analogSetPinAttenuation(PIN_SOIL, ADC_6db);
     // ---- T= 每個周期結束前 水位檢測前Xms，暖機----
     if (isMeasuring && !waterPwrOn &&
     (currentMillis - lastCycleStartTime >= MEASURE_DELAY - WATER_PWR_LEAD)) {
