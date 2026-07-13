@@ -83,9 +83,10 @@ LGFX tft;
 // 感測器腳位與參數
 // ==========================================
 #define PIN_ONEWIRE   25
-#define PIN_SOIL      35
 #define PIN_WATER_LVL 33
 #define PIN_WATER_PWR 32
+#define PIN_SOIL_PWR  26
+#define PIN_SOIL      35
 #define PIN_SDA       21
 #define PIN_SCL       22
 #define SHT45_ADDR    0x44
@@ -95,8 +96,11 @@ const unsigned long CYCLE_PERIOD  = 1000;  // 1Hz 週期
 const unsigned long MEASURE_DELAY = 800;   // T=800ms 讀取
 const uint8_t UPLOAD_EVERY_N_CYCLES = 10;  // 每 10 個週期 (10 秒) 上傳一次雲端
 
-const unsigned long WATER_PWR_LEAD = 1;  // 讀取前 Xms 上電，目前測試不需要提前通電，因此只留 1ms 供確保打開有確實到3.3V
-bool waterPwrOn = false;
+const unsigned long WATER_PWR_LEAD = 1;  // 讀取前 Xms 上電，目前測試不需要提前通電，因此只留 1ms 確保偵測瞬間確實到3.3V，且因為是水中導電所以通電越短耗損越少
+const unsigned long SOIL_PWR_LEAD  = 1;  // 通電越短耗損越少，且測試只用 1ms 足夠
+
+bool waterPwrOn = false, soilPwrOn = false;
+int dryValue = 1300, wetValue = 2800;     // const 改一般變數，供動態校準
 
 OneWire oneWire(PIN_ONEWIRE);
 DallasTemperature ds18b20(&oneWire);
@@ -184,7 +188,7 @@ void drawValues() {
     tft.drawString(buf, X, 135);
 
     tft.setTextColor(TFT_ORANGE, TFT_BLACK);
-    int soilPct = constrain(map(soilRaw, 4095, 1050, 0, 100), 0, 100); // 依實測校正
+    int soilPct = constrain(map(soilRaw, dryValue, wetValue, dryValue, wetValue), 0, 100);
     snprintf(buf, sizeof(buf), "%d (%d%%)", soilRaw, soilPct);
     tft.drawString(buf, X, 175);
 
@@ -253,6 +257,8 @@ void setup() {
 
     pinMode(PIN_WATER_PWR, OUTPUT);
     digitalWrite(PIN_WATER_PWR, LOW);
+    pinMode(PIN_SOIL_PWR, OUTPUT);
+    digitalWrite(PIN_SOIL_PWR, LOW);
 
 
 
@@ -282,6 +288,35 @@ void setup() {
 void loop() {
     unsigned long currentMillis = millis();
 
+      // ==========================================
+    // 1. 檢查是否有來自 Serial Monitor 的新輸入
+    // ==========================================
+    if (Serial.available() > 0) {
+        // 讀取整行字串直到遇到換行符號
+        String input = Serial.readStringUntil('\n');
+        input.trim(); // 清除字串前後的多餘空白或隱藏換行符
+
+        // 尋找逗號的位置
+        int commaIndex = input.indexOf(',');
+
+        // 如果有找到逗號，就進行字串切割與更新
+        if (commaIndex > 0) {
+            // 切割出前後兩段，並轉成整數 (toInt)
+            int newDry = input.substring(0, commaIndex).toInt();
+            int newWet = input.substring(commaIndex + 1).toInt();
+
+            // 簡易防呆：確保轉換出來的數字不是 0 (除非你真的輸入0)
+            dryValue = newDry;
+            wetValue = newWet;
+
+            Serial.println("\n✅ ==================================");
+            Serial.printf("✅ 更新成功！新邊界值 -> DRY: %d, WET: %d\n", dryValue, wetValue);
+            Serial.println("✅ ==================================\n");
+        } else if (input.length() > 0) {
+            Serial.println("❌ 格式錯誤！請記得加上逗號，例如: 1000,4000");
+        }
+    }
+
     // ---- 觸控：LovyanGFX 內部用 pin_int 快速判斷，無觸控時幾乎零成本 ----
     uint16_t tx, ty;
     if (tft.getTouch(&tx, &ty) && currentMillis - lastTouchDraw > 50) {
@@ -302,12 +337,18 @@ void loop() {
         sht45Trigger();                    // ~8.3ms
         ds18b20.requestTemperatures();     // ~750ms，非阻塞
     }
-
-    // ---- T=預備：觸發量測----
+    
+    // ---- T= 每個周期結束前 水位檢測前Xms，暖機----
     if (isMeasuring && !waterPwrOn &&
     (currentMillis - lastCycleStartTime >= MEASURE_DELAY - WATER_PWR_LEAD)) {
     digitalWrite(PIN_WATER_PWR, HIGH);
     waterPwrOn = true;
+    }
+    // ---- T= 每個周期結束前 土壤溼度檢測前Xms，暖機----
+    if (isMeasuring && !soilPwrOn &&
+    (currentMillis - lastCycleStartTime >= MEASURE_DELAY - SOIL_PWR_LEAD)) {
+    digitalWrite(PIN_SOIL_PWR, HIGH);
+     soilPwrOn = true;
     }
 
     // ---- T=800ms：統一讀取並更新螢幕 ----
@@ -325,6 +366,9 @@ void loop() {
         // 水位
         digitalWrite(PIN_WATER_PWR, LOW);
         waterPwrOn = false;
+        // 土壤
+        digitalWrite(PIN_SOIL_PWR, LOW);
+        soilPwrOn = false;
 
         drawValues();
         Serial.printf("AirT=%.2f AirH=%.2f WaterT=%.2f Soil=%d Level=%d\n",
