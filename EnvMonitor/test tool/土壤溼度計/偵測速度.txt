@@ -1,14 +1,30 @@
 // ==========================================
 // 手搓高階版土壤感測器「最佳暖機時間」分析測試工具
 // ==========================================
-// 基本上結論是，由於是電阻，時間越短電阻越高，反而給1MS 確保系統供電3.3v，然後最快的取值結束。
+// 基本上結論是，由於是電阻，時間越短電阻越高，反而給1MS 確保系統供電3.3v，然後最快的取值結束。]
+
+
+// [ESP32 微控制器]
+//                              |
+// [GPIO 26 (脈衝供電)] --------+
+//                              |
+//                         (探針線 A)
+//                         [黑色探針]  <-- 插在土裡
+//                         (探針線 B)
+//                              |
+//                              +-------- [GPIO 35 (類比讀取)]
+//                              |
+//                        [23.8k 電阻]
+//                              |
+// [GND (接地)] ----------------+
+
 
 #define PIN_SOIL_PWR 26   // 供電腳位 (接探針線A)
-#define PIN_SOIL_LVL 32   // 類比讀取腳位 (接探針線B與分壓電阻)
+#define PIN_SOIL_LVL 35   // 類比讀取腳位 (接探針線B與分壓電阻)
 
 // 定義我們要測試的一系列暖機時間 (單位：毫秒)
 // 因為已經拔掉藍色板子，我們預期延遲會極低，所以集中測試短時間
-const int testDelays[] = {0, 1, 2, 5, 10, 20, 50, 100};
+const int testDelays[] = {10000};
 const int numTests = sizeof(testDelays) / sizeof(testDelays[0]);
 
 void setup() {
@@ -23,8 +39,7 @@ void setup() {
     pinMode(PIN_SOIL_PWR, OUTPUT);
     digitalWrite(PIN_SOIL_PWR, LOW); 
     
-    // 設定 ADC 衰減為 11dB，擴展量測範圍至 0~3.1V
-    analogSetPinAttenuation(PIN_SOIL_LVL, ADC_11db);
+
     
     delay(3000); // 給土壤離子 3 秒鐘的初始平靜時間
 }
@@ -45,6 +60,8 @@ void loop() {
         
         // 3. 瞬間讀取數值 (取 3 次平均值過濾 ADC 雜訊)
         long sum = 0;
+        // 設定 ADC 衰減為 11dB，擴展量測範圍至 0~3.1V
+        analogSetPinAttenuation(PIN_SOIL_LVL, ADC_6db);
         for(int j = 0; j < 3; j++) {
             sum += analogRead(PIN_SOIL_LVL);
         }
@@ -57,10 +74,10 @@ void loop() {
         Serial.printf("暖機 %3d ms  =>  讀取數值: %d\n", currentWarmUp, avgValue);
         
         // 6. 【極度重要】讓土壤休息 3 秒，消除上一輪的微小電解干擾
-        delay(3000); 
+        delay(1000); 
     }
     
     Serial.println("==================================");
     Serial.println("循環結束，等待 5 秒後進行下一輪...");
-    delay(5000);
+    delay(1000);
 }

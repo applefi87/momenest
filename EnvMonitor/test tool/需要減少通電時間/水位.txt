@@ -5,12 +5,12 @@
 
 
 
-const int PIN_WATER_PWR = 26;   // 供電腳位 (接感測器 VCC) 另外記得接地
+const int PIN_WATER_PWR = 32;   // 供電腳位 (接感測器 VCC) 另外記得接地
 const int PIN_WATER_LVL = 33;   // 類比讀取腳位 (接感測器 S)
 
 // 定義我們要測試的一系列暖機時間 (單位：毫秒)
 // 從完全不暖機 (0) 到暖機 100ms
-const int testDelays[] = {0, 1, 2, 5, 10, 20, 50, 100};
+const int testDelays[] = {10000};
 const int numTests = sizeof(testDelays) / sizeof(testDelays[0]);
 
 void setup() {
@@ -57,11 +57,11 @@ void loop() {
         Serial.printf("暖機 %3d ms  =>  讀取數值: %d\n", currentWarmUp, avgValue);
         
         // 6. 【極度重要】讓水體休息 3 秒，消除上一輪的電解干擾
-        delay(3000); 
+        delay(1000); 
     }
     
     Serial.println("==================================");
     Serial.println("循環結束，等待 5 秒後進行下一輪...");
-    delay(5000);
+    delay(1000);
 }
 
