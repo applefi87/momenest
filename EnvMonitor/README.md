@@ -25,7 +25,7 @@ ESP32 + 3.5" TFT 觸控螢幕的環境監測系統，每秒更新空氣溫濕度
 - Tools → Board → esp32 → **ESP32 Dev Module**
   - 不要選 ESP32**S3** / S2 / C3 Dev Module——本板是 ESP32-WROOM-E（Xtensa LX6 雙核），選 S3 會編譯失敗
 - Flash Size: 4MB（預設）
-- Partition Scheme: Default
+- Partition Scheme: Default（含中文介面字型，flash 不足時改 **Huge APP**）
 - Upload Speed: 921600（上傳不穩改 115200）
 - USB 驅動：板載 CP2102，需安裝 Silicon Labs CP210x 驅動
 
@@ -33,29 +33,20 @@ ESP32 + 3.5" TFT 觸控螢幕的環境監測系統，每秒更新空氣溫濕度
 
 ## 需安裝函式庫（Library Manager）
 
-- **LovyanGFX**（螢幕+觸控，腳位設定全在 .ino 內，不需修改 library 檔案）
+- **LovyanGFX**（螢幕+觸控，腳位設定全在 `display_hw.h`，不需修改 library 檔案）
 - **OneWire**
 - **DallasTemperature**
+- **ArduinoJson**（解析 `lang.h` 的多語系 JSON 文字表）
 
 SHT45 使用內建 Wire 以原始 I2C 指令操作（觸發/讀取分離、CRC-8 校驗），不需額外函式庫。
+校準值與語言選擇用內建 Preferences (NVS) 儲存，也不需額外函式庫。
 
 ## 程式架構
 
-非阻塞 1Hz 嚴格時序（參考 OMNI-TEC 專案做法）：
+程式已模組化拆分（腳位 `config.h`、螢幕 `display_hw.*`、感測 `sensors.*`、
+UI `ui_*.cpp`…），完整導覽見根目錄 `CLAUDE.md`，動工前先讀 `../DEV_NOTES.md`。
+
+非阻塞 1Hz 嚴格時序（參考 OMNI-TEC 專案做法，實作在 `sensors.cpp`）：
 
 - T=0ms：觸發 SHT45 量測與 DS18B20 溫度轉換（只下指令，立即返回）
-- T=800ms：統一讀取所有結果（>750ms 確保 DS18B20 12-bit 轉換完成）+ ADC，更新螢幕
-- 觸控隨時輪詢（LovyanGFX 用 IRQ 腳快速判斷），點擊時左下角顯示 X/Y 座標
-
-## 雲端上傳（Cloudflare Worker + D1）
-
-- 每 10 秒 HTTPS POST 一筆到 Worker（部署方式見 `../cloud/README.md`）
-- **設定**：複製 `secrets.h.example` 為 `secrets.h`，填入 WiFi 帳密、Worker 網址、API 密鑰（此檔已被 .gitignore 排除）
-- WiFi 非阻塞連線 + 每 15 秒自動重連；斷網時本地螢幕照常運作
-- 時間戳由伺服器補上，ESP32 不需 NTP
-
-## 待校正項目
-
-- 土壤濕度 `map(soilRaw, 4095, 1200, ...)`：依實測乾/濕端點調整
-- 水位 `map(waterRaw, 0, 2600, ...)`：依實際滿水 ADC 值調整
-- 觸控校正值 `x_min/x_max/y_min/y_max`：預設 300~3600，可再精調
+- T=800ms：探針上電 → 統一讀取所有結果（>750
