@@ -65,6 +65,15 @@ static const uint16_t TC_COLS[3] = { COL_TEMP, COL_HUM, COL_WTEMP };
 void uiInit() {
     tft.init();
     tft.setRotation(1);      // 橫向 480x320
+
+    // 開機黑白交替全屏刷新：加速消除面板殘影 (image retention)。
+    // 長時間顯示同一靜態畫面 (尤其舊版反相亮底) 會讓液晶暫時極化殘留，
+    // 深色底下會隱約看到舊畫面；殘影屬面板物理現象，會隨使用自然淡化。
+    for (int i = 0; i < 3; i++) {
+        tft.fillScreen(TFT_WHITE); delay(120);
+        tft.fillScreen(TFT_BLACK); delay(120);
+    }
+
     uiDrawMain();
 }
 
@@ -156,19 +165,4 @@ void uiDrawValues() {
 void uiHandleTouch(int x, int y) {
     if (uiMode == UI_MAIN) {
         if (inBox(x, y, LANG_X - 6, LANG_Y - 6, LANG_W + 12, LANG_H + 12)) {
-            nextLang();
-            uiDrawMain();
-            return;
-        }
-        if (inBox(x, y, BTN_EDIT_X - 8, BC_SOIL_Y + 14,  BTN_EDIT_W + 16, BTN_EDIT_H + 16)) {
-            uiOpenEditor(true);
-            return;
-        }
-        if (inBox(x, y, BTN_EDIT_X - 8, BC_WATER_Y + 14, BTN_EDIT_W + 16, BTN_EDIT_H + 16)) {
-            uiOpenEditor(false);
-            return;
-        }
-        return;
-    }
-    uiEditTouch(x, y);
-}
+            
