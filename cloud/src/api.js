@@ -35,17 +35,34 @@ export async function handleIngest(request, env) {
 }
 
 // GET /api/data — 公開查詢歷史區間（?from=&to= unix秒, ?limit=）
+// 長區間自動按時間分桶取平均降採樣，確保回傳資料涵蓋整個區間
+// （否則 10 秒一筆 × 24h = 8640 筆會被 LIMIT 截到只剩區間開頭）
+const RAW_INTERVAL_SEC = 10;   // ESP32 上傳週期
+const TARGET_POINTS = 720;     // 降採樣目標點數
+
 export async function handleData(url, env) {
   const now = Math.floor(Date.now() / 1000);
   const from = parseInt(url.searchParams.get('from')) || now - 86400; // 預設近 24h
   const to = parseInt(url.searchParams.get('to')) || now;
   const limit = Math.min(parseInt(url.searchParams.get('limit')) || 2000, 5000);
 
-  const { results } = await env.DB.prepare(
-    `SELECT ts, air_temp, air_hum, water_temp, soil, water_level
-     FROM readings WHERE ts BETWEEN ? AND ?
-     ORDER BY ts ASC LIMIT ?`
-  ).bind(from, to, limit).all();
+  const bucket = Math.max(1, Math.ceil((to - from) / TARGET_POINTS));
+  let sql;
+  if (bucket > RAW_INTERVAL_SEC) {
+    // bucket 為整數運算結果，直接內插進 SQL 安全
+    sql = `SELECT (CAST(ts / ${bucket} AS INTEGER)) * ${bucket} + ${Math.floor(bucket / 2)} AS ts,
+                  AVG(air_temp) AS air_temp, AVG(air_hum) AS air_hum,
+                  AVG(water_temp) AS water_temp,
+                  CAST(ROUND(AVG(soil)) AS INTEGER) AS soil,
+                  CAST(ROUND(AVG(water_level)) AS INTEGER) AS water_level
+           FROM readings WHERE ts BETWEEN ? AND ?
+           GROUP BY CAST(ts / ${bucket} AS INTEGER) ORDER BY ts ASC LIMIT ?`;
+  } else {
+    sql = `SELECT ts, air_temp, air_hum, water_temp, soil, water_level
+           FROM readings WHERE ts BETWEEN ? AND ?
+           ORDER BY ts ASC LIMIT ?`;
+  }
+  const { results } = await env.DB.prepare(sql).bind(from, to, limit).all();
   return json(results);
 }
 
