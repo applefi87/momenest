@@ -38,13 +38,3 @@ void nextLang() {
     langIdx = (langIdx + 1) % langCount;
     uiPrefs.putString("lang", codes[langIdx]);
 }
-
-const lgfx::IFont* fontLabel() {
-    return langAscii() ? (const lgfx::IFont*)&fonts::Font2
-                       : (const lgfx::IFont*)&fonts::efontTW_16;
-}
-
-const lgfx::IFont* fontTitle() {
-    return langAscii() ? (const lgfx::IFont*)&fonts::Font4
-                       : (const lgfx::IFont*)&fonts::efontTW_16;
-}

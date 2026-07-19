@@ -19,8 +19,7 @@ void uiHandleTouch(int x, int y);    // 觸控事件分發 (單次觸發)
 
 // ---- 共用繪圖小工具 (ui_main.cpp 實作) ----
 bool inBox(int x, int y, int bx, int by, int bw, int bh);
-void drawBtn(int x, int y, int w, int h, const char *label,
-             uint16_t color, const lgfx::IFont *font);
+void drawBtn(int x, int y, int w, int h, const char *label, uint16_t color);
 
 // ---- 校準編輯畫面 (ui_edit.cpp 實作) ----
 void uiOpenEditor(bool isSoil);
