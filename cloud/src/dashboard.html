@@ -5,6 +5,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="theme-color" content="#f5f5f7" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="apple-touch-icon" href="/icon-180.png">
+<link rel="icon" type="image/svg+xml" href="/icon.svg">
 <title>環境監測</title>
 <script>
 // 首屏就套用主題，避免深色系統裝置閃黑（預設淺色）
@@ -743,6 +748,9 @@ setInterval(refreshLatest, 10000);
 setInterval(refreshSpark, 60000);
 setInterval(refreshChart, 60000);
 setInterval(() => { if(latestData) document.getElementById('updated').textContent = relTime(latestData.ts); }, 5000);
+
+// --- PWA service worker ---
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js');
 </script>
 </body>
 </html>

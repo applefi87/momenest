@@ -9,6 +9,12 @@ type = "Text"
 globs = ["**/*.html"]
 fallthrough = true
 
+# .png 以二進位模組 import（PWA 圖示）
+[[rules]]
+type = "Data"
+globs = ["**/*.png"]
+fallthrough = true
+
 # D1 資料庫綁定
 # 執行 `wrangler d1 create env-monitor-db` 後，把回傳的 database_id 貼到下面
 [[d1_databases]]

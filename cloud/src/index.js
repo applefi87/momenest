@@ -11,6 +11,8 @@
  */
 import { CORS, json, handleIngest, handleData, handleLatest } from './api.js';
 import DASHBOARD_HTML from './dashboard.html';
+import { MANIFEST, SW_JS, ICON_SVG } from './pwa.js';
+import ICON_PNG from './icon-180.png';
 
 export default {
   async fetch(request, env) {
@@ -31,6 +33,19 @@ export default {
           'Cache-Control': 'no-cache',
         },
       });
+    }
+
+    // ---- PWA 靜態資源 ----
+    if (request.method === 'GET') {
+      const day = 'public, max-age=86400';
+      if (path === '/manifest.webmanifest')
+        return new Response(MANIFEST, { headers: { 'Content-Type': 'application/manifest+json', 'Cache-Control': day } });
+      if (path === '/sw.js')
+        return new Response(SW_JS, { headers: { 'Content-Type': 'application/javascript', 'Cache-Control': 'no-cache' } });
+      if (path === '/icon.svg')
+        return new Response(ICON_SVG, { headers: { 'Content-Type': 'image/svg+xml', 'Cache-Control': day } });
+      if (path === '/icon-180.png')
+        return new Response(ICON_PNG, { headers: { 'Content-Type': 'image/png', 'Cache-Control': day } });
     }
 
     return json({ error: 'not found' }, 404);
