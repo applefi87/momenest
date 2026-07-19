@@ -32,7 +32,9 @@ static const char LANG_JSON[] = R"json(
     "cancel": "CANCEL",
     "err_minmax": "MIN must not equal MAX!",
     "calib_soil": "Soil Calibration",
-    "calib_water": "Water Level Calibration"
+    "calib_water": "Water Level Calibration",
+    "theme_light": "Light",
+    "theme_dark": "Dark"
   },
   "zh": {
     "ascii": false,
@@ -52,7 +54,9 @@ static const char LANG_JSON[] = R"json(
     "cancel": "取消",
     "err_minmax": "最低值不可等於最高值！",
     "calib_soil": "土壤濕度校準",
-    "calib_water": "水位校準"
+    "calib_water": "水位校準",
+    "theme_light": "淺色",
+    "theme_dark": "深色"
   }
 }
 )json";

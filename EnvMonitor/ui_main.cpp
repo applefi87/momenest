@@ -60,6 +60,10 @@ static void drawHeader() {
     tft.setTextColor(COL_ACCENT, COL_BG);
     tft.drawString(L("title"), 12, 10);
     tft.drawFastHLine(0, HDR_H - 1, 480, COL_EDGE);
+
+    // 繪製主題與語言切換按鈕
+    bool isLight = (currentTheme == &ThemeLight);
+    drawBtn(THEME_X, THEME_Y, THEME_W, THEME_H, L(isLight ? "theme_light" : "theme_dark"), COL_MUTED);
     drawBtn(LANG_X, LANG_Y, LANG_W, LANG_H, L("btn"), COL_MUTED);
     drawStatusDots();
 }
@@ -171,12 +175,13 @@ void uiDrawValues() {
 // ==========================================
 void uiHandleTouch(int x, int y) {
     if (uiMode == UI_MAIN) {
-        // 點擊左上角 Env Monitor 標題切換主題
-        if (x < 150 && y < HDR_H) {
+        // 主題切換按鈕
+        if (inBox(x, y, THEME_X - 6, THEME_Y - 6, THEME_W + 12, THEME_H + 12)) {
             themeToggle();
             uiDrawMain();
             return;
         }
+        // 語言切換按鈕
         if (inBox(x, y, LANG_X - 6, LANG_Y - 6, LANG_W + 12, LANG_H + 12)) {
             nextLang();
             uiDrawMain();

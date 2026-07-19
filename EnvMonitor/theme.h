@@ -15,6 +15,8 @@ struct Theme {
 };
 
 extern const Theme* currentTheme;
+extern const Theme ThemeDark;
+extern const Theme ThemeLight;
 
 void themeInit();
 void themeToggle();
@@ -40,13 +42,17 @@ void themeToggle();
 #define HDR_H       40      // 頂部標題列高
 #define CARD_R      10      // 卡片圓角
 
-// 右上角：語言切換鈕 + 狀態圓點 (WiFi / 上傳)
+// 右上角：主題與語言切換鈕 + 狀態圓點 (WiFi / 上傳)
 #define LANG_X      428
 #define LANG_Y      7
 #define LANG_W      44
 #define LANG_H      26
-#define DOT_WIFI_X  392
+#define DOT_WIFI_X  394
 #define DOT_CLOUD_X 412
+#define THEME_X     328
+#define THEME_Y     7
+#define THEME_W     54
+#define THEME_H     26
 
 // 上排三張小卡 (空氣溫度/濕度/水溫)，x = 8 + i*(TC_W+8)
 #define TC_Y        48
