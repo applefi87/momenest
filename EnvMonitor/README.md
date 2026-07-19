@@ -49,4 +49,18 @@ UI `ui_*.cpp`…），完整導覽見根目錄 `CLAUDE.md`，動工前先讀 `..
 非阻塞 1Hz 嚴格時序（參考 OMNI-TEC 專案做法，實作在 `sensors.cpp`）：
 
 - T=0ms：觸發 SHT45 量測與 DS18B20 溫度轉換（只下指令，立即返回）
-- T=800ms：探針上電 → 統一讀取所有結果（>750
+- T=800ms：探針上電 → 統一讀取所有結果（>750ms 確保 DS18B20 12-bit 轉換完成）→ 斷電，更新螢幕
+- 觸控隨時輪詢（LovyanGFX 用 IRQ 腳快速判斷），單次觸發防彈跳
+
+## 雲端上傳（Cloudflare Worker + D1）
+
+- 每 10 秒 HTTPS POST 一筆到 Worker（部署方式見 `../cloud/README.md`）
+- **設定**：複製 `secrets.h.example` 為 `secrets.h`，填入 WiFi 帳密、Worker 網址、API 密鑰（此檔已被 .gitignore 排除）
+- WiFi 非阻塞連線 + 每 15 秒自動重連；斷網時本地螢幕照常運作
+- 時間戳由伺服器補上，ESP32 不需 NTP
+
+## 校準
+
+- 土壤濕度 / 水位的 0~100% 端點：**直接在螢幕上按各列右側「校準」鈕設定**
+  （可微調或一鍵取目前讀值），儲存於 NVS 斷電保留；預設值在 `calibration.cpp`
+- 觸控校正值 `x_min/x_max/y_min/y_max`（`display_hw.h`）：預設 300~3600，可再精調

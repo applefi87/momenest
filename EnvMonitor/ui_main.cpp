@@ -167,4 +167,11 @@ void uiHandleTouch(int x, int y) {
             uiOpenEditor(true);
             return;
         }
-        if (inBox(x, y, BTN_EDIT_X - 8, BC_WAT
+        if (inBox(x, y, BTN_EDIT_X - 8, BC_WATER_Y + 14, BTN_EDIT_W + 16, BTN_EDIT_H + 16)) {
+            uiOpenEditor(false);
+            return;
+        }
+        return;
+    }
+    uiEditTouch(x, y);
+}
