@@ -112,8 +112,23 @@ const DASHBOARD_HTML = `<!DOCTYPE html>
   --radius: 16px;
   --safe-top: env(safe-area-inset-top, 0px);
 }
+:root[data-theme="dark"] {
+  --bg: #000;
+  --card-bg: rgba(28,28,30,0.72);
+  --card-border: rgba(255,255,255,0.08);
+  --card-shadow: 0 2px 16px rgba(0,0,0,0.3);
+  --text-primary: #f5f5f7;
+  --text-secondary: #98989d;
+  --text-tertiary: #636366;
+  --seg-bg: rgba(118,118,128,0.24);
+  --seg-active: rgba(50,50,52,1);
+  --seg-shadow: 0 1px 4px rgba(0,0,0,0.3);
+  --chart-bg: rgba(28,28,30,0.72);
+  --grid-color: rgba(255,255,255,0.05);
+  --tick-color: #98989d;
+}
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme="light"]) {
     --bg: #000;
     --card-bg: rgba(28,28,30,0.72);
     --card-border: rgba(255,255,255,0.08);
@@ -143,6 +158,27 @@ body {
 
 /* Header */
 .header { padding: 8px 0 20px; }
+.header .header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.theme-btn {
+  width: 36px; height: 36px;
+  border: 1px solid var(--card-border);
+  border-radius: 50%;
+  background: var(--card-bg);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  color: var(--text-secondary);
+  font-size: 1rem;
+  line-height: 1;
+  cursor: pointer;
+  font-family: inherit;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
 .header h1 {
   font-size: 2rem;
   font-weight: 700;
@@ -288,7 +324,7 @@ body {
   width: 8px; height: 8px;
   border-radius: 50%;
 }
-.chart-section canvas { width: 100% !important; }
+.chart-wrap { position: relative; height: 180px; }
 
 /* Calibration modal */
 .cal-btn {
@@ -386,7 +422,10 @@ body {
 <body>
 
 <div class="header">
-  <h1>環境監測</h1>
+  <div class="header-row">
+    <h1>環境監測</h1>
+    <button class="theme-btn" id="themeBtn" onclick="cycleTheme()" title="切換主題">◐</button>
+  </div>
   <div class="subtitle">
     <span class="status-dot" id="statusDot"></span>
     <span id="updated">載入中…</span>
@@ -407,7 +446,7 @@ body {
     <span class="legend-item"><span class="legend-dot" style="background:#64d2ff"></span>濕度</span>
     <span class="legend-item"><span class="legend-dot" style="background:#30d158"></span>水溫</span>
   </div>
-  <canvas id="chartT" height="160"></canvas>
+  <div class="chart-wrap"><canvas id="chartT"></canvas></div>
 </div>
 
 <div class="chart-section">
@@ -415,7 +454,7 @@ body {
     <span class="legend-item"><span class="legend-dot" style="background:#ff6723"></span>土壤</span>
     <span class="legend-item"><span class="legend-dot" style="background:#bf5af2"></span>水位</span>
   </div>
-  <canvas id="chartA" height="160"></canvas>
+  <div class="chart-wrap"><canvas id="chartA"></canvas></div>
 </div>
 
 <button class="cal-btn" onclick="openCal()">校準設定</button>
@@ -444,6 +483,33 @@ const FIELDS = [
 ];
 const RANGES = [['1h',3600],['24h',86400],['7d',604800],['30d',2592000]];
 let rangeSec = 86400, chartT, chartA, latestData = null, sparkData = [];
+
+// --- Theme (auto / light / dark，存 localStorage) ---
+const THEMES = ['auto','light','dark'];
+const THEME_ICONS = { auto:'◐', light:'☀︎', dark:'☾' };
+function getTheme() { return localStorage.getItem('theme') || 'auto'; }
+function isDarkTheme() {
+  const t = getTheme();
+  if (t === 'dark') return true;
+  if (t === 'light') return false;
+  return window.matchMedia('(prefers-color-scheme: dark)').matches;
+}
+function applyTheme() {
+  const t = getTheme();
+  if (t === 'auto') document.documentElement.removeAttribute('data-theme');
+  else document.documentElement.setAttribute('data-theme', t);
+  document.getElementById('themeBtn').textContent = THEME_ICONS[t];
+}
+function cycleTheme() {
+  const next = THEMES[(THEMES.indexOf(getTheme()) + 1) % THEMES.length];
+  localStorage.setItem('theme', next);
+  applyTheme();
+  refreshChart();   // 圖表顏色跟著主題重繪
+}
+applyTheme();
+window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+  if (getTheme() === 'auto') refreshChart();
+});
 
 // --- Calibration (localStorage) ---
 function getCal() {
@@ -567,12 +633,12 @@ async function refreshChart() {
         ? d.toLocaleTimeString('zh-TW',{hour:'2-digit',minute:'2-digit'})
         : d.toLocaleDateString('zh-TW',{month:'numeric',day:'numeric'});
     });
-    const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    const isDark = isDarkTheme();
     const opts = {
       responsive: true, maintainAspectRatio: false,
       interaction: { mode: 'index', intersect: false },
       plugins: { legend: { display: false }, tooltip: { backgroundColor: isDark?'rgba(40,40,42,.9)':'rgba(255,255,255,.95)', titleColor: isDark?'#f5f5f7':'#1d1d1f', bodyColor: isDark?'#ccc':'#555', borderColor: isDark?'rgba(255,255,255,0.1)':'rgba(0,0,0,0.06)', borderWidth: 1, cornerRadius: 10, padding: 10, bodyFont: { family: '-apple-system' } } },
-      scales: { x: { grid: { display: false }, ticks: { maxTicksLimit: 6, color: 'var(--tick-color)', font: { size: 10 } }, border: { display: false } }, y: { grid: { color: isDark?'rgba(255,255,255,0.05)':'rgba(0,0,0,0.04)' }, ticks: { color: isDark?'#98989d':'#86868b', font: { size: 10 }, maxTicksLimit: 5 }, border: { display: false } } },
+      scales: { x: { grid: { display: false }, ticks: { maxTicksLimit: 6, color: isDark?'#98989d':'#86868b', font: { size: 10 } }, border: { display: false } }, y: { grid: { color: isDark?'rgba(255,255,255,0.05)':'rgba(0,0,0,0.04)' }, ticks: { color: isDark?'#98989d':'#86868b', font: { size: 10 }, maxTicksLimit: 5 }, border: { display: false } } },
       elements: { point: { radius: 0, hoverRadius: 4 } },
     };
     const ds = (key, color, canvasId) => {
