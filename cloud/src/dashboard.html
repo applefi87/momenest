@@ -529,7 +529,9 @@ function relTime(ts) {
 
 // --- Sparkline SVG ---
 // X 軸按真實時間定位；相鄰樣本間隔 > GAP_SEC（掉線）就斷線，沒資料的時段留白
-const GAP_SEC = 90;
+const UPLOAD_INTERVAL_SEC = 10; // ESP32 上傳週期，需與韌體 config.h 的設定一致
+const GAP_FACTOR = 6;           // 超過上傳週期的幾倍視為掉線
+const GAP_SEC = UPLOAD_INTERVAL_SEC * GAP_FACTOR;
 function sparkSVG(rows, key, color, from, to) {
   if (!rows || rows.length < 2) return '';
   const w = 200, h = 32, span = (to - from) || 1;
@@ -592,11 +594,12 @@ async function refreshLatest() {
   } catch {}
 }
 
-// --- Fetch spark data (1h for sparklines；10 秒一筆一小時最多 360 筆) ---
+// --- Fetch spark data (1h for sparklines，筆數上限依上傳週期推算) ---
 async function refreshSpark() {
   try {
     const now = Math.floor(Date.now()/1000);
-    const rows = await (await fetch('/api/data?from='+(now-3600)+'&to='+now+'&limit=400')).json();
+    const limit = Math.ceil(3600 / UPLOAD_INTERVAL_SEC) + 10;
+    const rows = await (await fetch('/api/data?from='+(now-3600)+'&to='+now+'&limit='+limit)).json();
     sparkData = rows;
     sparkFrom = now - 3600;
     sparkTo = now;
