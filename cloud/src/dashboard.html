@@ -81,6 +81,8 @@ body {
   align-items: center;
   justify-content: space-between;
 }
+.header-actions { display: flex; gap: 8px; }
+#langBtn { font-size: 0.78rem; font-weight: 600; }
 .theme-btn {
   width: 36px; height: 36px;
   border: 1px solid var(--card-border);
@@ -341,8 +343,11 @@ body {
 
 <div class="header">
   <div class="header-row">
-    <h1>環境監測</h1>
-    <button class="theme-btn" id="themeBtn" onclick="cycleTheme()" title="切換主題">◐</button>
+    <h1 data-i18n="title">環境監測</h1>
+    <div class="header-actions">
+      <button class="theme-btn" id="langBtn" onclick="toggleLang()" title="Language">EN</button>
+      <button class="theme-btn" id="themeBtn" onclick="cycleTheme()" title="Theme">◐</button>
+    </div>
   </div>
   <div class="subtitle">
     <span class="status-dot" id="statusDot"></span>
@@ -360,47 +365,93 @@ body {
 
 <div class="chart-section">
   <div class="chart-title">
-    <span class="legend-item"><span class="legend-dot" style="background:#ff9f0a"></span>氣溫</span>
-    <span class="legend-item"><span class="legend-dot" style="background:#64d2ff"></span>濕度</span>
-    <span class="legend-item"><span class="legend-dot" style="background:#30d158"></span>水溫</span>
+    <span class="legend-item"><span class="legend-dot" style="background:#ff9f0a"></span><span data-i18n="air_temp">氣溫</span></span>
+    <span class="legend-item"><span class="legend-dot" style="background:#64d2ff"></span><span data-i18n="air_hum">濕度</span></span>
+    <span class="legend-item"><span class="legend-dot" style="background:#30d158"></span><span data-i18n="water_temp">水溫</span></span>
   </div>
   <div class="chart-wrap"><canvas id="chartT"></canvas></div>
 </div>
 
 <div class="chart-section">
   <div class="chart-title">
-    <span class="legend-item"><span class="legend-dot" style="background:#ff6723"></span>土壤</span>
-    <span class="legend-item"><span class="legend-dot" style="background:#bf5af2"></span>水位</span>
+    <span class="legend-item"><span class="legend-dot" style="background:#ff6723"></span><span data-i18n="soil">土壤</span></span>
+    <span class="legend-item"><span class="legend-dot" style="background:#bf5af2"></span><span data-i18n="water_level">水位</span></span>
   </div>
   <div class="chart-wrap"><canvas id="chartA"></canvas></div>
 </div>
 
-<button class="cal-btn" onclick="openCal()">校準設定</button>
+<button class="cal-btn" onclick="openCal()" data-i18n="cal_btn">校準設定</button>
 
 <div class="modal-overlay" id="calModal">
   <div class="modal">
-    <h3>ADC → % 校準</h3>
-    <div class="field"><label>土壤 乾 (0%)</label><input id="calSoilMin" type="number"></div>
-    <div class="field"><label>土壤 濕 (100%)</label><input id="calSoilMax" type="number"></div>
-    <div class="field"><label>水位 低 (0%)</label><input id="calWaterMin" type="number"></div>
-    <div class="field"><label>水位 高 (100%)</label><input id="calWaterMax" type="number"></div>
+    <h3 data-i18n="cal_title">ADC → % 校準</h3>
+    <div class="field"><label data-i18n="soil_dry">土壤 乾 (0%)</label><input id="calSoilMin" type="number"></div>
+    <div class="field"><label data-i18n="soil_wet">土壤 濕 (100%)</label><input id="calSoilMax" type="number"></div>
+    <div class="field"><label data-i18n="water_low">水位 低 (0%)</label><input id="calWaterMin" type="number"></div>
+    <div class="field"><label data-i18n="water_high">水位 高 (100%)</label><input id="calWaterMax" type="number"></div>
     <div class="actions">
-      <button class="btn-cancel" onclick="closeCal()">取消</button>
-      <button class="btn-save" onclick="saveCal()">儲存</button>
+      <button class="btn-cancel" onclick="closeCal()" data-i18n="cancel">取消</button>
+      <button class="btn-save" onclick="saveCal()" data-i18n="save">儲存</button>
     </div>
   </div>
 </div>
 
 <script>
 const FIELDS = [
-  { key:'air_temp',    label:'氣溫',   unit:'°C', color:'#ff9f0a', type:'temp' },
-  { key:'air_hum',     label:'濕度',   unit:'%',  color:'#64d2ff', type:'temp' },
-  { key:'water_temp',  label:'水溫',   unit:'°C', color:'#30d158', type:'temp' },
-  { key:'soil',        label:'土壤',   unit:'',   color:'#ff6723', type:'adc' },
-  { key:'water_level', label:'水位',   unit:'',   color:'#bf5af2', type:'adc' },
+  { key:'air_temp',    unit:'°C', color:'#ff9f0a', type:'temp' },
+  { key:'air_hum',     unit:'%',  color:'#64d2ff', type:'temp' },
+  { key:'water_temp',  unit:'°C', color:'#30d158', type:'temp' },
+  { key:'soil',        unit:'',   color:'#ff6723', type:'adc' },
+  { key:'water_level', unit:'',   color:'#bf5af2', type:'adc' },
 ];
 const RANGES = [['1h',3600],['24h',86400],['7d',604800],['30d',2592000]];
 let rangeSec = 86400, chartT, chartA, latestData = null, sparkData = [];
+
+// --- i18n（預設跟瀏覽器語言，切換存 localStorage） ---
+const I18N = {
+  zh: {
+    title: '環境監測', loading: '載入中…',
+    air_temp: '氣溫', air_hum: '濕度', water_temp: '水溫', soil: '土壤', water_level: '水位',
+    cal_btn: '校準設定', cal_title: 'ADC → % 校準',
+    soil_dry: '土壤 乾 (0%)', soil_wet: '土壤 濕 (100%)',
+    water_low: '水位 低 (0%)', water_high: '水位 高 (100%)',
+    cancel: '取消', save: '儲存',
+    just_now: '剛剛', sec_ago: ' 秒前', min_ago: ' 分鐘前', hr_ago: ' 小時前', day_ago: ' 天前',
+    locale: 'zh-TW',
+  },
+  en: {
+    title: 'Environment', loading: 'Loading…',
+    air_temp: 'Air Temp', air_hum: 'Humidity', water_temp: 'Water Temp', soil: 'Soil', water_level: 'Water Level',
+    cal_btn: 'Calibration', cal_title: 'ADC → % Calibration',
+    soil_dry: 'Soil dry (0%)', soil_wet: 'Soil wet (100%)',
+    water_low: 'Water low (0%)', water_high: 'Water high (100%)',
+    cancel: 'Cancel', save: 'Save',
+    just_now: 'just now', sec_ago: 's ago', min_ago: 'm ago', hr_ago: 'h ago', day_ago: 'd ago',
+    locale: 'en-US',
+  },
+};
+let lang = (function () {
+  const s = localStorage.getItem('lang');
+  if (s === 'zh' || s === 'en') return s;
+  return (navigator.language || '').toLowerCase().indexOf('zh') === 0 ? 'zh' : 'en';
+})();
+const t = k => I18N[lang][k] || k;
+function applyLang() {
+  document.documentElement.lang = lang === 'zh' ? 'zh-Hant' : 'en';
+  document.title = t('title');
+  document.querySelectorAll('[data-i18n]').forEach(el => { el.textContent = t(el.dataset.i18n); });
+  document.getElementById('langBtn').textContent = lang === 'zh' ? 'EN' : '中';
+  if (!latestData) document.getElementById('updated').textContent = t('loading');
+}
+function toggleLang() {
+  lang = lang === 'zh' ? 'en' : 'zh';
+  localStorage.setItem('lang', lang);
+  applyLang();
+  renderCards();
+  refreshChart();
+  if (latestData) document.getElementById('updated').textContent = relTime(latestData.ts);
+}
+applyLang();
 
 // --- Theme (light / dark / auto，預設淺色，存 localStorage) ---
 const THEMES = ['light','dark','auto'];
@@ -468,11 +519,11 @@ function saveCal() {
 // --- Relative time ---
 function relTime(ts) {
   const diff = Math.floor(Date.now()/1000) - ts;
-  if (diff < 10) return '剛剛';
-  if (diff < 60) return diff + ' 秒前';
-  if (diff < 3600) return Math.floor(diff/60) + ' 分鐘前';
-  if (diff < 86400) return Math.floor(diff/3600) + ' 小時前';
-  return Math.floor(diff/86400) + ' 天前';
+  if (diff < 10) return t('just_now');
+  if (diff < 60) return diff + t('sec_ago');
+  if (diff < 3600) return Math.floor(diff/60) + t('min_ago');
+  if (diff < 86400) return Math.floor(diff/3600) + t('hr_ago');
+  return Math.floor(diff/86400) + t('day_ago');
 }
 
 // --- Sparkline SVG ---
@@ -509,7 +560,7 @@ function renderCards() {
       }
     }
     const spark = sparkData.length ? sparkSVG(sparkData.map(row => row[f.key]), f.color) : '';
-    return '<div class="card"><div class="label"><span class="dot" style="background:'+f.color+'"></span>'+f.label+'</div><div class="value">'+display+(unitStr?'<span class="unit">'+unitStr+'</span>':'')+'</div>'+spark+'</div>';
+    return '<div class="card"><div class="label"><span class="dot" style="background:'+f.color+'"></span>'+t(f.key)+'</div><div class="value">'+display+(unitStr?'<span class="unit">'+unitStr+'</span>':'')+'</div>'+spark+'</div>';
   }).join('');
 }
 
@@ -551,8 +602,8 @@ async function refreshChart() {
     const labels = rows.map(r => {
       const d = new Date(r.ts*1000);
       return rangeSec <= 86400
-        ? d.toLocaleTimeString('zh-TW',{hour:'2-digit',minute:'2-digit'})
-        : d.toLocaleDateString('zh-TW',{month:'numeric',day:'numeric'});
+        ? d.toLocaleTimeString(I18N[lang].locale,{hour:'2-digit',minute:'2-digit'})
+        : d.toLocaleDateString(I18N[lang].locale,{month:'numeric',day:'numeric'});
     });
     const isDark = isDarkTheme();
     const opts = {
@@ -565,7 +616,7 @@ async function refreshChart() {
     const ds = (key, color, canvasId) => {
       const ctx = document.getElementById(canvasId).getContext('2d');
       return {
-        label: FIELDS.find(f=>f.key===key).label,
+        label: t(key),
         data: rows.map(r=>r[key]), borderColor: color, backgroundColor: buildGradient(ctx, color),
         fill: true, pointRadius: 0, borderWidth: 2, tension: .4, spanGaps: true,
       };
