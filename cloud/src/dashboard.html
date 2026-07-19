@@ -405,7 +405,8 @@ const FIELDS = [
   { key:'water_level', unit:'',   color:'#bf5af2', type:'adc' },
 ];
 const RANGES = [['1h',3600],['24h',86400],['7d',604800],['30d',2592000]];
-let rangeSec = 86400, chartT, chartA, latestData = null, sparkData = [];
+let rangeSec = 86400, chartT, chartA, latestData = null;
+let sparkData = [], sparkFrom = 0, sparkTo = 0;
 
 // --- i18n（預設跟瀏覽器語言，切換存 localStorage） ---
 const I18N = {
@@ -527,21 +528,34 @@ function relTime(ts) {
 }
 
 // --- Sparkline SVG ---
-function sparkSVG(data, color) {
-  if (!data || data.length < 2) return '';
-  const vals = data.filter(v => v != null);
+// X 軸按真實時間定位；相鄰樣本間隔 > GAP_SEC（掉線）就斷線，沒資料的時段留白
+const GAP_SEC = 90;
+function sparkSVG(rows, key, color, from, to) {
+  if (!rows || rows.length < 2) return '';
+  const w = 200, h = 32, span = (to - from) || 1;
+  const vals = rows.map(r => r[key]).filter(v => v != null);
   if (vals.length < 2) return '';
   const min = Math.min(...vals), max = Math.max(...vals);
   const range = max - min || 1;
-  const w = 200, h = 32;
-  const pts = data.map((v, i) => {
-    if (v == null) return null;
-    const x = (i / (data.length - 1)) * w;
-    const y = h - ((v - min) / range) * (h - 4) - 2;
-    return x.toFixed(1)+','+y.toFixed(1);
-  }).filter(Boolean);
-  if (pts.length < 2) return '';
-  return '<svg class="spark" viewBox="0 0 '+w+' '+h+'" preserveAspectRatio="none"><polyline points="'+pts.join(' ')+'" fill="none" stroke="'+color+'" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  const toXY = r => (((r.ts - from) / span) * w).toFixed(1) + ',' +
+                    (h - ((r[key] - min) / range) * (h - 4) - 2).toFixed(1);
+  // 依時間間隔切段
+  const segs = [];
+  let cur = [], prevTs = null;
+  for (const r of rows) {
+    if (r[key] == null) { if (cur.length) segs.push(cur); cur = []; prevTs = null; continue; }
+    if (prevTs != null && r.ts - prevTs > GAP_SEC) { if (cur.length) segs.push(cur); cur = []; }
+    cur.push(r); prevTs = r.ts;
+  }
+  if (cur.length) segs.push(cur);
+  const parts = segs.map(s => {
+    if (s.length === 1) {
+      const [cx, cy] = toXY(s[0]).split(',');
+      return '<circle cx="'+cx+'" cy="'+cy+'" r="1.5" fill="'+color+'"/>';
+    }
+    return '<polyline points="'+s.map(toXY).join(' ')+'" fill="none" stroke="'+color+'" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>';
+  });
+  return '<svg class="spark" viewBox="0 0 '+w+' '+h+'" preserveAspectRatio="none">'+parts.join('')+'</svg>';
 }
 
 // --- Cards ---
@@ -559,7 +573,7 @@ function renderCards() {
         display = (typeof r[f.key] === 'number') ? (Number.isInteger(r[f.key]) ? r[f.key] : r[f.key].toFixed(1)) : r[f.key];
       }
     }
-    const spark = sparkData.length ? sparkSVG(sparkData.map(row => row[f.key]), f.color) : '';
+    const spark = sparkData.length ? sparkSVG(sparkData, f.key, f.color, sparkFrom, sparkTo) : '';
     return '<div class="card"><div class="label"><span class="dot" style="background:'+f.color+'"></span>'+t(f.key)+'</div><div class="value">'+display+(unitStr?'<span class="unit">'+unitStr+'</span>':'')+'</div>'+spark+'</div>';
   }).join('');
 }
@@ -578,12 +592,14 @@ async function refreshLatest() {
   } catch {}
 }
 
-// --- Fetch spark data (1h for sparklines) ---
+// --- Fetch spark data (1h for sparklines；10 秒一筆一小時最多 360 筆) ---
 async function refreshSpark() {
   try {
     const now = Math.floor(Date.now()/1000);
-    const rows = await (await fetch('/api/data?from='+(now-3600)+'&to='+now+'&limit=60')).json();
+    const rows = await (await fetch('/api/data?from='+(now-3600)+'&to='+now+'&limit=400')).json();
     sparkData = rows;
+    sparkFrom = now - 3600;
+    sparkTo = now;
     renderCards();
   } catch {}
 }
@@ -599,8 +615,17 @@ async function refreshChart() {
   try {
     const now = Math.floor(Date.now()/1000);
     const rows = await (await fetch('/api/data?from='+(now-rangeSec)+'&to='+now)).json();
-    const labels = rows.map(r => {
-      const d = new Date(r.ts*1000);
+    // 掉線空窗插入 null 斷點，配合 spanGaps:false 讓線在沒資料處斷開
+    const pts = [];
+    let last = null;
+    for (const r of rows) {
+      if (last && r.ts - last.ts > GAP_SEC) pts.push(null);
+      pts.push(r);
+      last = r;
+    }
+    const labels = pts.map(p => {
+      if (!p) return '';
+      const d = new Date(p.ts*1000);
       return rangeSec <= 86400
         ? d.toLocaleTimeString(I18N[lang].locale,{hour:'2-digit',minute:'2-digit'})
         : d.toLocaleDateString(I18N[lang].locale,{month:'numeric',day:'numeric'});
@@ -617,8 +642,8 @@ async function refreshChart() {
       const ctx = document.getElementById(canvasId).getContext('2d');
       return {
         label: t(key),
-        data: rows.map(r=>r[key]), borderColor: color, backgroundColor: buildGradient(ctx, color),
-        fill: true, pointRadius: 0, borderWidth: 2, tension: .4, spanGaps: true,
+        data: pts.map(p => p ? p[key] : null), borderColor: color, backgroundColor: buildGradient(ctx, color),
+        fill: true, pointRadius: 0, borderWidth: 2, tension: .4, spanGaps: false,
       };
     };
     chartT?.destroy(); chartA?.destroy();
