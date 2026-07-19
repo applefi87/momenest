@@ -245,6 +245,13 @@ body {
   border-radius: 50%;
 }
 .chart-wrap { position: relative; height: 180px; }
+.chart-stats {
+  display: flex; flex-wrap: wrap; gap: 6px 16px;
+  margin-top: 12px; font-size: 0.7rem;
+  color: var(--text-secondary); font-variant-numeric: tabular-nums;
+}
+.chart-stats .stat-item { display: flex; align-items: center; gap: 4px; }
+.chart-stats b { font-weight: 600; color: var(--text-tertiary); margin-left: 4px; margin-right: 1px; }
 
 /* Calibration modal */
 .cal-btn {
@@ -370,6 +377,7 @@ body {
     <span class="legend-item"><span class="legend-dot" style="background:#30d158"></span><span data-i18n="water_temp">水溫</span></span>
   </div>
   <div class="chart-wrap"><canvas id="chartT"></canvas></div>
+  <div class="chart-stats" id="statsT"></div>
 </div>
 
 <div class="chart-section">
@@ -378,6 +386,7 @@ body {
     <span class="legend-item"><span class="legend-dot" style="background:#bf5af2"></span><span data-i18n="water_level">水位</span></span>
   </div>
   <div class="chart-wrap"><canvas id="chartA"></canvas></div>
+  <div class="chart-stats" id="statsA"></div>
 </div>
 
 <button class="cal-btn" onclick="openCal()" data-i18n="cal_btn">校準設定</button>
@@ -417,6 +426,7 @@ const I18N = {
     soil_dry: '土壤 乾 (0%)', soil_wet: '土壤 濕 (100%)',
     water_low: '水位 低 (0%)', water_high: '水位 高 (100%)',
     cancel: '取消', save: '儲存',
+    stat_max: '高', stat_min: '低', stat_avg: '均',
     just_now: '剛剛', sec_ago: ' 秒前', min_ago: ' 分鐘前', hr_ago: ' 小時前', day_ago: ' 天前',
     locale: 'zh-TW',
   },
@@ -427,6 +437,7 @@ const I18N = {
     soil_dry: 'Soil dry (0%)', soil_wet: 'Soil wet (100%)',
     water_low: 'Water low (0%)', water_high: 'Water high (100%)',
     cancel: 'Cancel', save: 'Save',
+    stat_max: 'H', stat_min: 'L', stat_avg: 'Avg',
     just_now: 'just now', sec_ago: 's ago', min_ago: 'm ago', hr_ago: 'h ago', day_ago: 'd ago',
     locale: 'en-US',
   },
@@ -515,6 +526,7 @@ function saveCal() {
   }));
   closeCal();
   renderCards();
+  refreshChart();   // 統計列的 % 換算跟著新校準值更新
 }
 
 // --- Relative time ---
@@ -616,6 +628,27 @@ async function refreshSpark() {
   } catch {}
 }
 
+// --- Range stats (每張圖表下方的 高/低/均) ---
+function renderStats(rows) {
+  const grp = { statsT: ['air_temp','air_hum','water_temp'], statsA: ['soil','water_level'] };
+  for (const id in grp) {
+    document.getElementById(id).innerHTML = grp[id].map(key => {
+      const f = FIELDS.find(x => x.key === key);
+      const vals = rows.map(r => r[key]).filter(v => v != null);
+      if (!vals.length) return '';
+      const min = Math.min(...vals), max = Math.max(...vals);
+      const avg = vals.reduce((a,b) => a+b, 0) / vals.length;
+      // ADC 欄位有校準時換算成 %（線性映射，大小順序不變）
+      const fmt = v => {
+        if (f.type === 'adc') { const p = adcToPercent(key, v); return p != null ? p+'%' : Math.round(v); }
+        return v.toFixed(1) + f.unit;
+      };
+      return '<span class="stat-item"><span class="legend-dot" style="background:'+f.color+'"></span>'+t(key)
+        +'<b>'+t('stat_max')+'</b>'+fmt(max)+'<b>'+t('stat_min')+'</b>'+fmt(min)+'<b>'+t('stat_avg')+'</b>'+fmt(avg)+'</span>';
+    }).join('');
+  }
+}
+
 // --- Charts ---
 function buildGradient(ctx, color) {
   const g = ctx.createLinearGradient(0, 0, 0, ctx.canvas.height);
@@ -628,6 +661,7 @@ async function refreshChart() {
     const now = Math.floor(Date.now()/1000);
     const from = now - rangeSec;
     const rows = await (await fetch('/api/data?from='+from+'&to='+now)).json();
+    renderStats(rows);
     
     // 彈性做法：動態計算當前資料的時間間距中位數，以此作為斷線判定基準
     let intervals = [];
