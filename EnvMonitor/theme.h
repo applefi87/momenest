@@ -6,22 +6,33 @@
 #include "display_hw.h"
 
 // ==========================================
-// 色票 (深色質感主題)
+// 動態主題切換 (指標映射)
 // ==========================================
-#define COL_BG      lgfx::color565(16, 20, 26)     // 全域背景
-#define COL_CARD    lgfx::color565(28, 34, 43)     // 卡片底
-#define COL_EDGE    lgfx::color565(42, 51, 64)     // 卡片邊框/分隔線
-#define COL_TEXT    lgfx::color565(232, 236, 241)  // 主要文字
-#define COL_MUTED   lgfx::color565(138, 148, 166)  // 次要文字
-#define COL_ACCENT  lgfx::color565(79, 195, 247)   // 標題
-#define COL_TEMP    lgfx::color565(255, 201, 77)   // 空氣溫度
-#define COL_HUM     lgfx::color565(100, 181, 246)  // 空氣濕度
-#define COL_WTEMP   lgfx::color565(129, 199, 132)  // 水溫
-#define COL_SOIL    lgfx::color565(255, 162, 77)   // 土壤濕度
-#define COL_WATER   lgfx::color565(111, 141, 255)  // 水位
-#define COL_OK      lgfx::color565(76, 175, 80)    // 正常/成功
-#define COL_ERR     lgfx::color565(239, 83, 80)    // 錯誤/失敗
-#define COL_BAR_BG  COL_EDGE                        // 橫條軌道
+struct Theme {
+    uint16_t bg, card, edge, text, muted, accent;
+    uint16_t temp, hum, wtemp, soil, water;
+    uint16_t ok, err, bar_bg;
+};
+
+extern const Theme* currentTheme;
+
+void themeInit();
+void themeToggle();
+
+#define COL_BG      (currentTheme->bg)
+#define COL_CARD    (currentTheme->card)
+#define COL_EDGE    (currentTheme->edge)
+#define COL_TEXT    (currentTheme->text)
+#define COL_MUTED   (currentTheme->muted)
+#define COL_ACCENT  (currentTheme->accent)
+#define COL_TEMP    (currentTheme->temp)
+#define COL_HUM     (currentTheme->hum)
+#define COL_WTEMP   (currentTheme->wtemp)
+#define COL_SOIL    (currentTheme->soil)
+#define COL_WATER   (currentTheme->water)
+#define COL_OK      (currentTheme->ok)
+#define COL_ERR     (currentTheme->err)
+#define COL_BAR_BG  (currentTheme->bar_bg)
 
 // ==========================================
 // 主畫面版面

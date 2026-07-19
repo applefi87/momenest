@@ -11,8 +11,17 @@
 #include "sensors.h"
 #include "net.h"
 #include <WiFi.h>
+#include "font_ui.h"
+#include "font_big.h"
 
 UiMode uiMode = UI_MAIN;
+
+// ==========================================
+// 字體切換工具
+// ==========================================
+// VLW 字體不應使用 setTextSize() 縮放，而是載入對應大小的字體
+static void useFont_UI()  { tft.loadFont(font_ui);  }
+static void useFont_Big() { tft.loadFont(font_big); }
 
 // ==========================================
 // 共用小工具
@@ -22,10 +31,9 @@ bool inBox(int x, int y, int bx, int by, int bw, int bh) {
 }
 
 void drawBtn(int x, int y, int w, int h, const char *label,
-             uint16_t color, const lgfx::IFont *font) {
+             uint16_t color) {
     tft.fillRoundRect(x, y, w, h, 8, COL_BG);
     tft.drawRoundRect(x, y, w, h, 8, color);
-    tft.setFont(font);
     tft.setTextColor(color, COL_BG);
     tft.setTextDatum(textdatum_t::middle_center);
     tft.drawString(label, x + w / 2, y + h / 2);
@@ -48,11 +56,11 @@ static void drawStatusDots() {
 }
 
 static void drawHeader() {
-    tft.setFont(fontTitle());
+    useFont_UI();
     tft.setTextColor(COL_ACCENT, COL_BG);
-    tft.drawString(L("title"), 12, langAscii() ? 8 : 12);
+    tft.drawString(L("title"), 12, 10);
     tft.drawFastHLine(0, HDR_H - 1, 480, COL_EDGE);
-    drawBtn(LANG_X, LANG_Y, LANG_W, LANG_H, L("btn"), COL_MUTED, fontLabel());
+    drawBtn(LANG_X, LANG_Y, LANG_W, LANG_H, L("btn"), COL_MUTED);
     drawStatusDots();
 }
 
@@ -63,8 +71,10 @@ static const char    *TC_KEYS[3] = { "air_temp", "air_hum", "water_t" };
 static const uint16_t TC_COLS[3] = { COL_TEMP, COL_HUM, COL_WTEMP };
 
 void uiInit() {
+    themeInit();             // 讀取並載入預設主題
     tft.init();
     tft.setRotation(1);      // 橫向 480x320
+    tft.setTextSize(1);       // VLW 字體不縮放，固定 1:1
 
     // 面板殘影 (image retention) 屬物理現象，短暫黑白閃無法消除，
     // 診斷與恢復用獨立工具：test tool/螢幕殘影測試/
@@ -76,10 +86,10 @@ void uiDrawMain() {
     drawHeader();
 
     // 上排三小卡
+    useFont_UI();
     for (int i = 0; i < 3; i++) {
         int x = 8 + i * (TC_W + 8);
         drawCard(x, TC_Y, TC_W, TC_H);
-        tft.setFont(fontLabel());
         tft.setTextColor(COL_MUTED, COL_CARD);
         tft.drawString(L(TC_KEYS[i]), x + 12, TC_Y + 10);
     }
@@ -90,11 +100,10 @@ void uiDrawMain() {
     const uint16_t bcols[2] = { COL_SOIL, COL_WATER };
     for (int i = 0; i < 2; i++) {
         drawCard(BC_X, ys[i], BC_W, BC_H);
-        tft.setFont(fontLabel());
         tft.setTextColor(COL_MUTED, COL_CARD);
         tft.drawString(L(bkeys[i]), BC_X + 12, ys[i] + 10);
         drawBtn(BTN_EDIT_X, ys[i] + 22, BTN_EDIT_W, BTN_EDIT_H,
-                L("edit"), bcols[i], fontLabel());
+                L("edit"), bcols[i]);
     }
 
     uiDrawValues();
@@ -106,7 +115,7 @@ static void drawAnalogRow(int y, int raw, bool valid, int mn, int mx, uint16_t c
     int pct = valid ? (int)constrain(map(raw, mn, mx, 0, 100), 0L, 100L) : 0;
 
     // 原始值小字
-    tft.setFont(fontLabel());
+    useFont_UI();
     tft.setTextColor(COL_MUTED, COL_CARD);
     tft.setTextPadding(115);
     if (valid) snprintf(buf, sizeof(buf), "%s %d", L("raw"), raw);
@@ -121,13 +130,17 @@ static void drawAnalogRow(int y, int raw, bool valid, int mn, int mx, uint16_t c
         tft.fillRoundRect(BAR_X, y + 32, w, BAR_H, 8, color);
     }
 
-    // 大 % 字
-    tft.setFont(&fonts::FreeSansBold18pt7b);
+    // 大 % 字 (使用 28px 大字體)
+    useFont_Big();
     tft.setTextColor(valid ? color : COL_ERR, COL_CARD);
-    tft.setTextPadding(92);
+    // 設定靠右對齊，並用 padding 清除背景。固定留 3 個字 (100%) 的寬度
+    tft.setTextPadding(75);
+    tft.setTextDatum(textdatum_t::top_right);
     if (valid) snprintf(buf, sizeof(buf), "%d%%", pct);
     else       snprintf(buf, sizeof(buf), "--");
-    tft.drawString(buf, PCT_X, y + 22);
+    // 畫在編輯按鈕的左側 15px 處
+    tft.drawString(buf, BTN_EDIT_X - 15, y + 20);
+    tft.setTextDatum(textdatum_t::top_left); // 恢復預設
     tft.setTextPadding(0);
 }
 
@@ -136,7 +149,7 @@ void uiDrawValues() {
     const float vals[3]  = { airTemp, airHum, waterTemp };
     const char *units[3] = { "C", "%", "C" };
 
-    tft.setFont(&fonts::Font4);
+    useFont_UI();
     for (int i = 0; i < 3; i++) {
         int x = 8 + i * (TC_W + 8);
         tft.setTextColor(isnan(vals[i]) ? COL_ERR : TC_COLS[i], COL_CARD);
@@ -158,6 +171,12 @@ void uiDrawValues() {
 // ==========================================
 void uiHandleTouch(int x, int y) {
     if (uiMode == UI_MAIN) {
+        // 點擊左上角 Env Monitor 標題切換主題
+        if (x < 150 && y < HDR_H) {
+            themeToggle();
+            uiDrawMain();
+            return;
+        }
         if (inBox(x, y, LANG_X - 6, LANG_Y - 6, LANG_W + 12, LANG_H + 12)) {
             nextLang();
             uiDrawMain();
