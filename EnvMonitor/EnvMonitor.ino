@@ -22,9 +22,27 @@
 
 static uint8_t cycleCount = 0;      // 量測週期計數 (供上傳節流)
 static bool touchHeld = false;      // 觸控防彈跳 (放開才能再按)
+static bool screenOn = true;        // 螢幕保護狀態
+static unsigned long lastTouchMs = 0;
+
+// 熄屏：黑畫面 + 停止重繪 (量測與上傳照常)；編輯畫面自動退回主畫面
+static void screenSleep() {
+    screenOn = false;
+    if (uiMode != UI_MAIN) uiMode = UI_MAIN;
+    tft.fillScreen(TFT_BLACK);
+    if (PIN_TFT_BL >= 0) digitalWrite(PIN_TFT_BL, LOW);
+}
+static void screenWake() {
+    screenOn = true;
+    if (PIN_TFT_BL >= 0) digitalWrite(PIN_TFT_BL, HIGH);
+    uiDrawMain();
+    uiDrawValues();
+}
 
 void setup() {
     Serial.begin(115200);
+    if (PIN_TFT_BL >= 0) { pinMode(PIN_TFT_BL, OUTPUT); digitalWrite(PIN_TFT_BL, HIGH); }
+    lastTouchMs = millis();
     calibInit();       // NVS 校準值
     i18nInit();        // 語言表 + 上次選的語言
     sensorsInit();     // I2C / 1-Wire / ADC
@@ -36,19 +54,25 @@ void setup() {
 void loop() {
     unsigned long now = millis();
 
-    // ---- 觸控 (單次觸發：放開後才能再按) ----
+    // ---- 觸控 (單次觸發：放開後才能再按)；熄屏時第一下只喚醒 ----
     uint16_t tx, ty;
     bool touched = tft.getTouch(&tx, &ty);
+    if (touched) lastTouchMs = now;
     if (touched && !touchHeld) {
         touchHeld = true;
-        uiHandleTouch(tx, ty);
+        if (!screenOn) screenWake();
+        else           uiHandleTouch(tx, ty);
     }
     if (!touched) touchHeld = false;
 
+    // ---- 螢幕保護：無觸控逾時熄屏 ----
+    if (screenOn && now - lastTouchMs >= SCREEN_TIMEOUT_MS) screenSleep();
+
     // ---- 1Hz 非阻塞量測 (時序由 sensors 模組管理) ----
     if (sensorsLoop(now)) {
-        if (uiMode == UI_MAIN) uiDrawValues();
-        else                   uiDrawEditRaw();   // 編輯畫面只更新即時原始讀值
+        if (!screenOn)              ;                 // 熄屏時不重繪
+        else if (uiMode == UI_MAIN) uiDrawValues();
+        else                        uiDrawEditRaw();  // 編輯畫面只更新即時原始讀值
 
         Serial.printf("AirT=%.2f AirH=%.2f WaterT=%.2f Soil=%d Level=%d\n",
                       airTemp, airHum, waterTemp, soilRaw, waterRaw);
