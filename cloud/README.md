@@ -36,6 +36,28 @@ wrangler deploy
 - 手機開這個網址 = 儀表板
 - ESP32 的 `secrets.h` 中 `API_URL` 填 `https://env-monitor.xxx.workers.dev/api/ingest`
 
+## 更新流程（改完程式碼後如何同步到雲端）
+
+API 邏輯與儀表板網頁都在同一個檔案 `src/index.js`，**沒有另外的靜態網頁上傳步驟**：
+
+- 改 API 行為（路由、查詢邏輯）→ 改 `export default { async fetch(...) }` 內的判斷式
+- 改儀表板畫面（版面、圖表、文字）→ 改檔案最下方 `DASHBOARD_HTML` 這個樣板字串
+  （裡面就是完整的 HTML/CSS/JS，直接編輯即可，Worker 會原樣把它當網頁回傳）
+
+改完後重新部署一次即可生效，網址不變：
+
+```bash
+cd cloud
+wrangler deploy
+```
+
+若同時改到 `schema.sql`（新增欄位等資料庫結構變更），`wrangler deploy`
+**不會**自動套用 SQL，需要另外手動執行遷移：
+
+```bash
+wrangler d1 execute env-monitor-db --remote --command="ALTER TABLE readings ADD COLUMN ..."
+```
+
 ## 測試（不用 ESP32 也能先驗證）
 
 ```bash
