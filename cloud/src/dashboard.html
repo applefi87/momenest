@@ -6,6 +6,10 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <title>環境監測</title>
+<script>
+// 首屏就套用主題，避免深色系統裝置閃黑（預設淺色）
+(function(){try{var t=localStorage.getItem('theme');if(['light','dark','auto'].indexOf(t)<0)t='light';if(t!=='auto')document.documentElement.setAttribute('data-theme',t);}catch(e){}})();
+</script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
 <style>
 :root {
@@ -59,7 +63,8 @@
 }
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body {
-  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", system-ui, sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display",
+               "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", system-ui, sans-serif;
   background: var(--bg);
   color: var(--text-primary);
   -webkit-font-smoothing: antialiased;
@@ -397,10 +402,13 @@ const FIELDS = [
 const RANGES = [['1h',3600],['24h',86400],['7d',604800],['30d',2592000]];
 let rangeSec = 86400, chartT, chartA, latestData = null, sparkData = [];
 
-// --- Theme (auto / light / dark，存 localStorage) ---
-const THEMES = ['auto','light','dark'];
+// --- Theme (light / dark / auto，預設淺色，存 localStorage) ---
+const THEMES = ['light','dark','auto'];
 const THEME_ICONS = { auto:'◐', light:'☀︎', dark:'☾' };
-function getTheme() { return localStorage.getItem('theme') || 'auto'; }
+function getTheme() {
+  const t = localStorage.getItem('theme');
+  return THEMES.includes(t) ? t : 'light';
+}
 function isDarkTheme() {
   const t = getTheme();
   if (t === 'dark') return true;
