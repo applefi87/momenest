@@ -3,6 +3,12 @@ name = "env-monitor"
 main = "src/index.js"
 compatibility_date = "2026-07-01"
 
+# .html 以純文字模組 import（儀表板 dashboard.html）
+[[rules]]
+type = "Text"
+globs = ["**/*.html"]
+fallthrough = true
+
 # D1 資料庫綁定
 # 執行 `wrangler d1 create env-monitor-db` 後，把回傳的 database_id 貼到下面
 [[d1_databases]]

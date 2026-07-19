@@ -38,11 +38,12 @@ wrangler deploy
 
 ## 更新流程（改完程式碼後如何同步到雲端）
 
-API 邏輯與儀表板網頁都在同一個檔案 `src/index.js`，**沒有另外的靜態網頁上傳步驟**：
+程式分三個檔案，部署時 wrangler 會自動打包，**沒有另外的靜態網頁上傳步驟**：
 
-- 改 API 行為（路由、查詢邏輯）→ 改 `export default { async fetch(...) }` 內的判斷式
-- 改儀表板畫面（版面、圖表、文字）→ 改檔案最下方 `DASHBOARD_HTML` 這個樣板字串
-  （裡面就是完整的 HTML/CSS/JS，直接編輯即可，Worker 會原樣把它當網頁回傳）
+- 改 API 行為（查詢邏輯、驗證）→ `src/api.js`
+- 改路由 → `src/index.js`
+- 改儀表板畫面（版面、圖表、文字）→ `src/dashboard.html`
+  （真正的 HTML 檔，直接編輯；經 wrangler.toml 的 Text 規則 import 進 Worker）
 
 改完後重新部署一次即可生效，網址不變：
 
