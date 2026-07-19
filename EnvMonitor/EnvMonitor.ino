@@ -59,6 +59,7 @@ void loop() {
         }
     }
 
-    // ---- WiFi 斷線監測與重連 (非阻塞) ----
+    // ---- WiFi 斷線監測與重連 (非阻塞) + OTA ----
     netEnsure();
+    netLoop();
 }

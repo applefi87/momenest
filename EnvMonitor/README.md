@@ -59,6 +59,14 @@ UI `ui_*.cpp`…），完整導覽見根目錄 `CLAUDE.md`，動工前先讀 `..
 - WiFi 非阻塞連線 + 每 15 秒自動重連；斷網時本地螢幕照常運作
 - 時間戳由伺服器補上，ESP32 不需 NTP
 
+## OTA 無線更新
+
+- WiFi 連上後自動啟用；Arduino IDE → Tools → Port 會出現網路埠
+  `env-monitor at <IP>`，選它上傳即可免接 USB（密碼 = `secrets.h` 的 `OTA_PASS`）
+- **Partition Scheme 必須有 OTA 槽**：Default 可；**Huge APP 不行**，
+  flash 不足時改用 "Minimal SPIFFS (1.9MB APP with OTA)"
+- 首次加入 OTA 功能仍需 USB 燒錄一次
+
 ## 校準
 
 - 土壤濕度 / 水位的 0~100% 端點：**直接在螢幕上按各列右側「校準」鈕設定**

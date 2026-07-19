@@ -3,10 +3,32 @@
 #include <WiFi.h>
 #include <WiFiClientSecure.h>
 #include <HTTPClient.h>
+#include <ArduinoOTA.h>
 #include "secrets.h"   // WiFi 帳密 + API 網址/密鑰 (複製 secrets.h.example 填入)
 
 int uploadState = 0;
 static unsigned long lastWifiRetry = 0;
+static bool otaStarted = false;
+
+// ==========================================
+// OTA 無線更新 (Arduino IDE: Tools -> Port -> env-monitor at ...)
+// 注意：需選有 OTA 槽的 Partition Scheme (Default 可；Huge APP 不行，
+//       flash 不足改用 "Minimal SPIFFS (1.9MB APP with OTA)")
+// ==========================================
+void netLoop() {
+    if (WiFi.status() != WL_CONNECTED) return;
+    if (!otaStarted) {
+        otaStarted = true;
+        ArduinoOTA.setHostname("env-monitor");
+        ArduinoOTA.setPassword(OTA_PASS);
+        ArduinoOTA.onStart([]() { Serial.println("OTA start"); });
+        ArduinoOTA.onEnd([]()   { Serial.println("OTA done, rebooting"); });
+        ArduinoOTA.onError([](ota_error_t e) { Serial.printf("OTA error %u\n", e); });
+        ArduinoOTA.begin();
+        Serial.println("OTA ready");
+    }
+    ArduinoOTA.handle();
+}
 
 void netInit() {
     // 非阻塞啟動：不等連線完成，連上前僅本地顯示
