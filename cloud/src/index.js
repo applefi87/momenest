@@ -25,7 +25,11 @@ export default {
 
     if (path === '/' && request.method === 'GET') {
       return new Response(DASHBOARD_HTML, {
-        headers: { 'Content-Type': 'text/html; charset=utf-8' },
+        headers: {
+          'Content-Type': 'text/html; charset=utf-8',
+          // 每次都向伺服器驗證，避免部署新版後瀏覽器仍用舊快取
+          'Cache-Control': 'no-cache',
+        },
       });
     }
 
