@@ -14,6 +14,7 @@ void calibInit() {
     soilMax  = prefs.getInt("sMax", soilMax);
     waterMin = prefs.getInt("wMin", waterMin);
     waterMax = prefs.getInt("wMax", waterMax);
+    prefs.end();
     Serial.printf("Calib loaded: soil %d~%d, water %d~%d\n",
                   soilMin, soilMax, waterMin, waterMax);
 }
@@ -21,7 +22,9 @@ void calibInit() {
 void calibSave(bool isSoil, int mn, int mx) {
     if (isSoil) { soilMin = mn;  soilMax = mx; }
     else        { waterMin = mn; waterMax = mx; }
+    prefs.begin("calib", false);
     prefs.putInt(isSoil ? "sMin" : "wMin", mn);
     prefs.putInt(isSoil ? "sMax" : "wMax", mx);
+    prefs.end();
     Serial.printf("Calib saved: %s MIN=%d MAX=%d\n", isSoil ? "soil" : "water", mn, mx);
 }

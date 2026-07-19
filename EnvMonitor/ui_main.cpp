@@ -68,7 +68,6 @@ static void drawHeader() {
 // 主畫面
 // ==========================================
 static const char    *TC_KEYS[3] = { "air_temp", "air_hum", "water_t" };
-static const uint16_t TC_COLS[3] = { COL_TEMP, COL_HUM, COL_WTEMP };
 
 void uiInit() {
     themeInit();             // 讀取並載入預設主題
@@ -148,11 +147,12 @@ void uiDrawValues() {
     char buf[24];
     const float vals[3]  = { airTemp, airHum, waterTemp };
     const char *units[3] = { "C", "%", "C" };
+    const uint16_t tc_cols[3] = { COL_TEMP, COL_HUM, COL_WTEMP };
 
     useFont_UI();
     for (int i = 0; i < 3; i++) {
         int x = 8 + i * (TC_W + 8);
-        tft.setTextColor(isnan(vals[i]) ? COL_ERR : TC_COLS[i], COL_CARD);
+        tft.setTextColor(isnan(vals[i]) ? COL_ERR : tc_cols[i], COL_CARD);
         if (isnan(vals[i])) snprintf(buf, sizeof(buf), "ERR");
         else                snprintf(buf, sizeof(buf), "%.1f %s", vals[i], units[i]);
         tft.setTextPadding(TC_W - 24);

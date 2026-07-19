@@ -55,12 +55,15 @@ void themeInit() {
     themePrefs.begin("ui", false);
     // 預設 true (Light Theme)
     bool isLight = themePrefs.getBool("isLight", true);
+    themePrefs.end();
     currentTheme = isLight ? &ThemeLight : &ThemeDark;
 }
 
 void themeToggle() {
     bool isLight = (currentTheme == &ThemeLight);
     isLight = !isLight;
+    themePrefs.begin("ui", false);
     themePrefs.putBool("isLight", isLight);
+    themePrefs.end();
     currentTheme = isLight ? &ThemeLight : &ThemeDark;
 }

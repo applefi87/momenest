@@ -21,6 +21,7 @@ void i18nInit() {
     if (langCount == 0) { strcpy(codes[0], "en"); langCount = 1; }   // JSON 壞掉的保底
 
     String saved = uiPrefs.getString("lang", codes[0]);
+    uiPrefs.end();
     for (int i = 0; i < langCount; i++)
         if (saved == codes[i]) langIdx = i;
 }
@@ -36,5 +37,7 @@ bool langAscii() {
 
 void nextLang() {
     langIdx = (langIdx + 1) % langCount;
+    uiPrefs.begin("ui", false);
     uiPrefs.putString("lang", codes[langIdx]);
+    uiPrefs.end();
 }
