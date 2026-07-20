@@ -17,7 +17,7 @@ static const char LANG_JSON[] = R"json(
   "en": {
     "ascii": true,
     "btn": "EN",
-    "title": "Env Monitor",
+    "title": "Momenest Env Monitor",
     "air_temp": "Air Temp",
     "air_hum": "Air Humidity",
     "water_t": "Water Temp",
@@ -39,7 +39,7 @@ static const char LANG_JSON[] = R"json(
   "zh": {
     "ascii": false,
     "btn": "中",
-    "title": "環境監測",
+    "title": "漫嶼環境監測",
     "air_temp": "空氣溫度",
     "air_hum": "空氣濕度",
     "water_t": "水溫",
