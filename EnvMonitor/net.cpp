@@ -25,7 +25,8 @@ void netLoop() {
         ArduinoOTA.onEnd([]()   { Serial.println("OTA done, rebooting"); });
         ArduinoOTA.onError([](ota_error_t e) { Serial.printf("OTA error %u\n", e); });
         ArduinoOTA.begin();
-        Serial.println("OTA ready");
+        Serial.printf("OTA ready — host: env-monitor.local  IP: %s\n",
+                      WiFi.localIP().toString().c_str());
     }
     ArduinoOTA.handle();
 }
