@@ -378,11 +378,18 @@ body {
 <div class="chart-section">
   <div class="chart-title">
     <span class="legend-item"><span class="legend-dot" style="background:#ff9f0a"></span><span data-i18n="air_temp">氣溫</span></span>
-    <span class="legend-item"><span class="legend-dot" style="background:#64d2ff"></span><span data-i18n="air_hum">濕度</span></span>
     <span class="legend-item"><span class="legend-dot" style="background:#30d158"></span><span data-i18n="water_temp">水溫</span></span>
   </div>
   <div class="chart-wrap"><canvas id="chartT"></canvas></div>
   <div class="chart-stats" id="statsT"></div>
+</div>
+
+<div class="chart-section">
+  <div class="chart-title">
+    <span class="legend-item"><span class="legend-dot" style="background:#64d2ff"></span><span data-i18n="air_hum">濕度</span></span>
+  </div>
+  <div class="chart-wrap"><canvas id="chartH"></canvas></div>
+  <div class="chart-stats" id="statsH"></div>
 </div>
 
 <div class="chart-section">
@@ -419,7 +426,7 @@ const FIELDS = [
   { key:'water_level', unit:'',   color:'#bf5af2', type:'adc' },
 ];
 const RANGES = [['1h',3600],['24h',86400],['7d',604800],['30d',2592000]];
-let rangeSec = 86400, chartT, chartA, latestData = null;
+let rangeSec = 86400, chartT, chartH, chartA, latestData = null;
 let sparkData = [], sparkFrom = 0, sparkTo = 0;
 
 // --- i18n（預設跟瀏覽器語言，切換存 localStorage） ---
@@ -635,7 +642,7 @@ async function refreshSpark() {
 
 // --- Range stats (每張圖表下方的 高/低/均) ---
 function renderStats(rows) {
-  const grp = { statsT: ['air_temp','air_hum','water_temp'], statsA: ['soil','water_level'] };
+  const grp = { statsT: ['air_temp','water_temp'], statsH: ['air_hum'], statsA: ['soil','water_level'] };
   for (const id in grp) {
     document.getElementById(id).innerHTML = grp[id].map(key => {
       const f = FIELDS.find(x => x.key === key);
@@ -711,8 +718,11 @@ async function refreshChart() {
         fill: true, pointRadius: 0, borderWidth: 2, tension: .4, spanGaps: false,
       };
     };
-    chartT?.destroy(); chartA?.destroy();
-    chartT = new Chart(document.getElementById('chartT'), { type:'line', data: { datasets:[ds('air_temp','#ff9f0a','chartT'), ds('air_hum','#64d2ff','chartT'), ds('water_temp','#30d158','chartT')] }, options: opts });
+    // 溫度圖 Y 軸固定 5~35°C；濕度、類比圖用自動範圍
+    const optsTemp = { ...opts, scales: { ...opts.scales, y: { ...opts.scales.y, min: 5, max: 35 } } };
+    chartT?.destroy(); chartH?.destroy(); chartA?.destroy();
+    chartT = new Chart(document.getElementById('chartT'), { type:'line', data: { datasets:[ds('air_temp','#ff9f0a','chartT'), ds('water_temp','#30d158','chartT')] }, options: optsTemp });
+    chartH = new Chart(document.getElementById('chartH'), { type:'line', data: { datasets:[ds('air_hum','#64d2ff','chartH')] }, options: opts });
     chartA = new Chart(document.getElementById('chartA'), { type:'line', data: { datasets:[ds('soil','#ff6723','chartA'), ds('water_level','#bf5af2','chartA')] }, options: opts });
   } catch {}
 }
