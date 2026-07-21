@@ -34,6 +34,8 @@ void netLoop() {
 void netInit() {
     // 非阻塞啟動：不等連線完成，連上前僅本地顯示
     WiFi.mode(WIFI_STA);
+    WiFi.setSleep(false);      // 關閉 WiFi 省電：本機插電供電，省電模式會讓
+                               // 裝置淺睡時不回應 ARP/ping/OTA（能上傳卻連不進來）
     WiFi.setAutoReconnect(true);
     WiFi.begin(WIFI_SSID, WIFI_PASS);
 }
