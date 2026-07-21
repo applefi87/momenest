@@ -718,8 +718,12 @@ async function refreshChart() {
         fill: true, pointRadius: 0, borderWidth: 2, tension: .4, spanGaps: false,
       };
     };
-    // 溫度圖 Y 軸固定 5~35°C；濕度、類比圖用自動範圍
-    const optsTemp = { ...opts, scales: { ...opts.scales, y: { ...opts.scales.y, min: 5, max: 35 } } };
+    // 溫度圖 Y 軸預設 15~35°C，資料超出時自動放寬（向外取整留餘裕）
+    const tvals = [];
+    for (const p of pts) if (!p.gap) for (const k of ['air_temp','water_temp']) if (p[k] != null) tvals.push(p[k]);
+    const tMin = tvals.length ? Math.min(15, Math.floor(Math.min(...tvals))) : 15;
+    const tMax = tvals.length ? Math.max(35, Math.ceil(Math.max(...tvals)))  : 35;
+    const optsTemp = { ...opts, scales: { ...opts.scales, y: { ...opts.scales.y, min: tMin, max: tMax } } };
     chartT?.destroy(); chartH?.destroy(); chartA?.destroy();
     chartT = new Chart(document.getElementById('chartT'), { type:'line', data: { datasets:[ds('air_temp','#ff9f0a','chartT'), ds('water_temp','#30d158','chartT')] }, options: optsTemp });
     chartH = new Chart(document.getElementById('chartH'), { type:'line', data: { datasets:[ds('air_hum','#64d2ff','chartH')] }, options: opts });
