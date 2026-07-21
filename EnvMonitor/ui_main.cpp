@@ -55,6 +55,32 @@ static void drawStatusDots() {
     tft.fillCircle(DOT_CLOUD_X, HDR_H / 2, 5, c);
 }
 
+// 頂部即時顯示本機 IP（純 ASCII 用內建小字 Font0，不動中文 VLW）；
+// 靠右印在標題與主題鈕之間的空隙，只在 IP 變動時重畫避免閃爍
+static char shownIP[16] = "";
+void drawHeaderIP() {
+    char ip[16];
+    if (WiFi.status() == WL_CONNECTED)
+        snprintf(ip, sizeof(ip), "%s", WiFi.localIP().toString().c_str());
+    else
+        ip[0] = '\0';
+    if (strcmp(ip, shownIP) == 0) return;   // 沒變就不重畫
+    strcpy(shownIP, ip);
+
+    // 動態量測標題寬度，IP 印在標題右側到主題鈕之間，確保不相蓋
+    useFont_UI();
+    int clearX = 12 + tft.textWidth(L("title")) + 10;
+    if (clearX < 226) clearX = 226;
+    tft.fillRect(clearX, 10, (THEME_X - 8) - clearX, 14, COL_BG);   // 清舊 IP
+    if (ip[0]) {
+        tft.setFont(&fonts::Font0);
+        tft.setTextColor(COL_MUTED, COL_BG);
+        tft.setTextDatum(textdatum_t::top_right);
+        tft.drawString(ip, THEME_X - 8, 12);
+        tft.setTextDatum(textdatum_t::top_left);
+    }
+}
+
 static void drawHeader() {
     useFont_UI();
     tft.setTextColor(COL_ACCENT, COL_BG);
@@ -66,6 +92,9 @@ static void drawHeader() {
     drawBtn(THEME_X, THEME_Y, THEME_W, THEME_H, L(isLight ? "theme_light" : "theme_dark"), COL_MUTED);
     drawBtn(LANG_X, LANG_Y, LANG_W, LANG_H, L("btn"), COL_MUTED);
     drawStatusDots();
+
+    shownIP[0] = '\0';   // 整列重畫後強制重印 IP
+    drawHeaderIP();
 }
 
 // ==========================================
@@ -168,6 +197,7 @@ void uiDrawValues() {
     drawAnalogRow(BC_SOIL_Y,  soilRaw,  soilValid,  soilMin,  soilMax,  COL_SOIL);
     drawAnalogRow(BC_WATER_Y, waterRaw, waterValid, waterMin, waterMax, COL_WATER);
     drawStatusDots();
+    drawHeaderIP();   // IP 變動時即時更新（如 WiFi 連上、DHCP 換號）
 }
 
 // ==========================================
