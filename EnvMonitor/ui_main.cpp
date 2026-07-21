@@ -71,7 +71,8 @@ static void drawHeader() {
 // ==========================================
 // 主畫面
 // ==========================================
-static const char    *TC_KEYS[3] = { "air_temp", "air_hum", "water_t" };
+// 上排三卡：兩溫度相鄰、濕度分開放最後
+static const char    *TC_KEYS[3] = { "air_temp", "water_t", "air_hum" };
 
 void uiInit() {
     themeInit();             // 讀取並載入預設主題
@@ -149,9 +150,9 @@ static void drawAnalogRow(int y, int raw, bool valid, int mn, int mx, uint16_t c
 
 void uiDrawValues() {
     char buf[24];
-    const float vals[3]  = { airTemp, airHum, waterTemp };
-    const char *units[3] = { "C", "%", "C" };
-    const uint16_t tc_cols[3] = { COL_TEMP, COL_HUM, COL_WTEMP };
+    const float vals[3]  = { airTemp, waterTemp, airHum };
+    const char *units[3] = { "C", "C", "%" };
+    const uint16_t tc_cols[3] = { COL_TEMP, COL_WTEMP, COL_HUM };
 
     useFont_UI();
     for (int i = 0; i < 3; i++) {
