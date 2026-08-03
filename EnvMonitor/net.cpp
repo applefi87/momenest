@@ -1,5 +1,6 @@
 #include "net.h"
 #include "sensors.h"
+#include "reading_format.h"   // 感測值→JSON (與 BLE 共用，見 tests/)
 #include <WiFi.h>
 #include <WiFiClientSecure.h>
 #include <HTTPClient.h>
@@ -68,17 +69,10 @@ void netUpload() {
     http.addHeader("Content-Type", "application/json");
     http.addHeader("X-API-Key", API_KEY);        // 只有持密鑰的本機能寫入
 
-    // 組 JSON；讀取失敗/無效以 null 送出，資料庫存 NULL
+    // 組 JSON；讀取失敗/無效以 null 送出 (格式化與單元測試見 reading_format)
     char body[192];
-    char tA[16], tH[16], tW[16], tS[12], tL[12];
-    if (isnan(airTemp))   { strcpy(tA, "null"); } else { snprintf(tA, sizeof(tA), "%.2f", airTemp); }
-    if (isnan(airHum))    { strcpy(tH, "null"); } else { snprintf(tH, sizeof(tH), "%.2f", airHum); }
-    if (isnan(waterTemp)) { strcpy(tW, "null"); } else { snprintf(tW, sizeof(tW), "%.2f", waterTemp); }
-    if (!soilValid)       { strcpy(tS, "null"); } else { snprintf(tS, sizeof(tS), "%d", soilRaw); }
-    if (!waterValid)      { strcpy(tL, "null"); } else { snprintf(tL, sizeof(tL), "%d", waterRaw); }
-    snprintf(body, sizeof(body),
-        "{\"air_temp\":%s,\"air_hum\":%s,\"water_temp\":%s,\"soil\":%s,\"water_level\":%s}",
-        tA, tH, tW, tS, tL);
+    SensorReading r = { airTemp, airHum, waterTemp, soilRaw, waterRaw, soilValid, waterValid };
+    formatReadingJson(body, sizeof(body), r);
 
     int code = http.POST(body);
     uploadState = (code == 200) ? 1 : 2;
