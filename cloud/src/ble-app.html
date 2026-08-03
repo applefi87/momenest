@@ -44,6 +44,14 @@ body{
 .card .label .cdot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
 .card .value{font-size:2rem;font-weight:500;letter-spacing:-.03em;margin-top:6px;font-variant-numeric:tabular-nums;transition:opacity .3s}
 .card .unit{font-size:1rem;font-weight:400;color:var(--text-secondary);margin-left:2px}
+.ota{margin-top:24px;background:var(--card-bg);border:1px solid var(--card-border);border-radius:var(--radius);padding:16px;box-shadow:var(--card-shadow)}
+.ota-title{font-size:.78rem;font-weight:600;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.02em;margin-bottom:12px}
+.ota .btn{margin-bottom:12px}
+.ota-file{font-size:.8rem;color:var(--text-secondary);margin-bottom:12px;word-break:break-all}
+.progress{height:22px;background:var(--card-border);border-radius:11px;overflow:hidden;margin-bottom:10px}
+.progress-bar{height:100%;width:0;background:var(--accent);border-radius:11px;transition:width .2s;display:flex;align-items:center;justify-content:center;color:#fff;font-size:.7rem;font-weight:600}
+.ota-status{font-size:.82rem;color:var(--text-secondary);min-height:1.2em}
+.ota-status.ok{color:var(--ok)} .ota-status.bad{color:var(--err)}
 .hint{font-size:.8rem;color:var(--text-secondary);line-height:1.6;margin-top:20px}
 .hint code{background:var(--card-bg);padding:1px 5px;border-radius:5px}
 .err{color:var(--err);font-size:.85rem;margin-top:12px}
@@ -60,6 +68,18 @@ body{
 
 <div class="cards" id="cards"></div>
 
+<div class="ota" id="otaSection" style="display:none">
+  <div class="ota-title">韌體更新 (BLE OTA)</div>
+  <label class="btn secondary" id="pickLabel" for="binFile">選擇 .bin 韌體檔</label>
+  <input type="file" id="binFile" accept=".bin" style="display:none" onchange="onPick()">
+  <div class="ota-file" id="otaFile">尚未選擇檔案</div>
+  <button class="btn" id="otaBtn" onclick="doOta()" disabled>開始更新</button>
+  <div class="progress" id="progressWrap" style="display:none">
+    <div class="progress-bar" id="progressBar"></div>
+  </div>
+  <div class="ota-status" id="otaStatus"></div>
+</div>
+
 <div class="err" id="err"></div>
 
 <div class="hint" id="hint">
@@ -73,6 +93,9 @@ body{
 const SVC_UUID      = '8f2a0001-b8c3-4e6a-9f1d-2a7c9e5b1a01';
 const READINGS_UUID = '8f2a0002-b8c3-4e6a-9f1d-2a7c9e5b1a01';
 const STATUS_UUID   = '8f2a0003-b8c3-4e6a-9f1d-2a7c9e5b1a01';
+const OTA_CTRL_UUID = '8f2a0004-b8c3-4e6a-9f1d-2a7c9e5b1a01';   // OTA 下指令/回結果
+const OTA_DATA_UUID = '8f2a0005-b8c3-4e6a-9f1d-2a7c9e5b1a01';   // OTA 灌韌體位元組
+const OTA_CHUNK     = 512;   // 每筆寫入位元組 (配合設備端 MTU 517)
 
 const FIELDS = [
   { key:'air_temp',    label:'氣溫', unit:'°C', color:'#ff9f0a', type:'temp' },
@@ -83,7 +106,11 @@ const FIELDS = [
 ];
 
 let device = null, server = null, latest = null;
+let otaCtrl = null, otaData = null, binBuf = null, otaRunning = false;
 const dec = new TextDecoder();
+
+// 設備端 control notify 回報碼 (與 ble_ota.cpp 一致)
+const OTA_BEGIN_OK=0x01, OTA_END_OK=0x02, OTA_ABORTED=0x03, OTA_PROGRESS=0x10, OTA_ERROR=0xEE;
 
 // 與雲端儀表板共用同一組校準值 (localStorage 'cal')：有校準就顯示 %
 function getCal(){ try{ return JSON.parse(localStorage.getItem('cal'))||{}; }catch{ return {}; } }
@@ -148,6 +175,15 @@ async function toggle(){
       onStatus(await sc.readValue());
     }catch{}
 
+    // OTA characteristics (同一 service)；拿得到才顯示更新區塊
+    try{
+      otaCtrl = await svc.getCharacteristic(OTA_CTRL_UUID);
+      otaData = await svc.getCharacteristic(OTA_DATA_UUID);
+      otaCtrl.addEventListener('characteristicvaluechanged', e=>onOtaStatus(e.target.value));
+      await otaCtrl.startNotifications();
+      document.getElementById('otaSection').style.display = 'block';
+    }catch{ otaCtrl = otaData = null; }
+
     setStatus('已連接 · ' + device.name, 'on');
     document.getElementById('connectBtn').textContent = '中斷連接';
     document.getElementById('connectBtn').classList.add('secondary');
@@ -170,6 +206,88 @@ function onDisconnect(){
   setStatus('已中斷', 'off');
   document.getElementById('connectBtn').textContent = '連接設備';
   document.getElementById('connectBtn').classList.remove('secondary');
+  otaCtrl = otaData = null;
+  if(otaRunning){
+    // 更新成功時設備會重開機→自動斷線，視為完成；否則視為中斷
+    setOtaStatus('設備已重新啟動，更新可能已完成（重新連接確認版本）', 'ok');
+    otaRunning = false;
+  }
+  document.getElementById('otaSection').style.display = 'none';
+}
+
+// ---- BLE OTA ----
+function setOtaStatus(msg, cls){
+  const el = document.getElementById('otaStatus');
+  el.textContent = msg || '';
+  el.className = 'ota-status' + (cls ? ' '+cls : '');
+}
+function setProgress(pct){
+  document.getElementById('progressWrap').style.display = 'block';
+  const bar = document.getElementById('progressBar');
+  bar.style.width = pct + '%';
+  bar.textContent = pct + '%';
+}
+function onPick(){
+  const f = document.getElementById('binFile').files[0];
+  if(!f){ return; }
+  const rd = new FileReader();
+  rd.onload = () => {
+    binBuf = rd.result;
+    document.getElementById('otaFile').textContent =
+      f.name + ' · ' + (binBuf.byteLength/1024).toFixed(0) + ' KB';
+    document.getElementById('otaBtn').disabled = false;
+  };
+  rd.readAsArrayBuffer(f);
+}
+function onOtaStatus(dv){
+  const st = dv.getUint8(0), detail = dv.byteLength>1 ? dv.getUint8(1) : 0;
+  if(st === OTA_ERROR){ setOtaStatus('設備回報錯誤 (code '+detail+')，已中止，舊韌體不受影響', 'bad'); otaRunning=false; }
+  else if(st === OTA_ABORTED){ setOtaStatus('已中止', 'bad'); otaRunning=false; }
+  // BEGIN_OK / PROGRESS / END_OK 由傳輸流程自行掌握，這裡不覆蓋進度
+}
+
+const sleep = ms => new Promise(r=>setTimeout(r,ms));
+
+async function doOta(){
+  if(!otaData || !otaCtrl){ setOtaStatus('未取得 OTA 服務', 'bad'); return; }
+  if(!binBuf){ setOtaStatus('請先選擇 .bin', 'bad'); return; }
+  if(otaRunning) return;
+  otaRunning = true;
+  document.getElementById('otaBtn').disabled = true;
+  document.getElementById('pickLabel').style.pointerEvents = 'none';
+  setOtaStatus('開始傳輸…傳輸中請勿離開或鎖屏');
+
+  const total = binBuf.byteLength;
+  const bytes = new Uint8Array(binBuf);
+  try{
+    // BEGIN + 4-byte little-endian size
+    const beg = new Uint8Array(5);
+    beg[0]=0x01; new DataView(beg.buffer).setUint32(1, total, true);
+    await otaCtrl.writeValueWithResponse(beg);
+
+    // 分塊灌 data（Write With Response → 設備寫完 flash 才回，天然流控）
+    let sent = 0;
+    setProgress(0);
+    while(sent < total){
+      if(!otaRunning) throw new Error('已中止');
+      const chunk = bytes.subarray(sent, Math.min(sent+OTA_CHUNK, total));
+      await otaData.writeValueWithResponse(chunk);
+      sent += chunk.length;
+      setProgress(Math.floor(sent*100/total));
+    }
+
+    // END
+    setOtaStatus('傳輸完成，設備驗證中…');
+    await otaCtrl.writeValueWithResponse(new Uint8Array([0x02]));
+    // 成功後設備會 notify END_OK 並重開機（→ 觸發 onDisconnect 視為完成）
+    setOtaStatus('已送出，等待設備重啟…', 'ok');
+  }catch(e){
+    setOtaStatus('傳輸失敗：'+(e.message||e)+'（舊韌體不受影響，可重試）', 'bad');
+    try{ await otaCtrl.writeValueWithResponse(new Uint8Array([0x03])); }catch{} // ABORT
+    otaRunning = false;
+    document.getElementById('otaBtn').disabled = false;
+    document.getElementById('pickLabel').style.pointerEvents = '';
+  }
 }
 
 renderCards();
