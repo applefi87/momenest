@@ -1,7 +1,9 @@
 /**********************************************************************
  * ble.cpp — BLE 讀值服務實作 (見 ble.h、BLE.md)
  *
- * 依賴函式庫：NimBLE-Arduino (Library Manager 安裝)。本檔對應 NimBLE 1.4.x API。
+ * 依賴函式庫：NimBLE-Arduino 2.x (Library Manager 安裝)。
+ *   註：2.x 的 ServerCallbacks 多了 NimBLEConnInfo& 參數、廣播改用
+ *   setName/enableScanResponse，與 1.x 不相容。
  * GATT 契約 (UUID / JSON 格式) 見 BLE.md，與 app/ 手機端一致。
  **********************************************************************/
 #include "config.h"
@@ -26,10 +28,12 @@ static NimBLECharacteristic* readingsChar = nullptr;
 static NimBLECharacteristic* statusChar   = nullptr;
 static bool clientConnected = false;
 
-// 斷線後自動重新廣播，讓手機能再次連上
+// 斷線後自動重新廣播，讓手機能再次連上 (NimBLE 2.x callback 簽章)
 class ServerCB : public NimBLEServerCallbacks {
-    void onConnect(NimBLEServer*) override    { clientConnected = true; }
-    void onDisconnect(NimBLEServer*) override {
+    void onConnect(NimBLEServer*, NimBLEConnInfo&) override {
+        clientConnected = true;
+    }
+    void onDisconnect(NimBLEServer*, NimBLEConnInfo&, int) override {
         clientConnected = false;
         NimBLEDevice::startAdvertising();
     }
@@ -48,9 +52,12 @@ void bleInit() {
         STATUS_UUID, NIMBLE_PROPERTY::READ | NIMBLE_PROPERTY::NOTIFY);
     svc->start();
 
+    // NimBLE 2.x：名稱與 128-bit UUID 同時放不進 31 bytes 廣播封包，
+    // 開 scan response 讓名稱放進回應封包 (App 以 service UUID 掃描)
     NimBLEAdvertising* adv = NimBLEDevice::getAdvertising();
+    adv->setName("env-monitor");
     adv->addServiceUUID(SVC_UUID);
-    adv->setScanResponse(true);
+    adv->enableScanResponse(true);
     NimBLEDevice::startAdvertising();
 
     Serial.println("BLE advertising as \"env-monitor\"");
