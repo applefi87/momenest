@@ -26,6 +26,12 @@ const uint8_t UPLOAD_EVERY_N_CYCLES = 10;  // 每 10 個週期 (10 秒) 上傳�
 const unsigned long WATER_PWR_LEAD = 1;
 const unsigned long SOIL_PWR_LEAD  = 1;
 
+// ---- BLE 讀值服務 ----
+// 手機以 BLE 連線即時取得感測值 (設備仍照常 WiFi 上傳)。用 NimBLE-Arduino。
+// flash 不足時設為 0 關閉整個 BLE 子系統 (ble.cpp 會編成空、.ino 不呼叫)。
+// 啟用需 Partition Scheme 選有 OTA 槽者 (Minimal SPIFFS 1.9MB APP with OTA)。
+#define ENABLE_BLE 1
+
 // ---- 螢幕保護 ----
 // 無觸控超過此時間熄屏（黑畫面停止重繪，防殘影），觸控喚醒
 const unsigned long SCREEN_TIMEOUT_MS = 5UL * 60 * 1000;

@@ -18,6 +18,7 @@
 #include "calibration.h"
 #include "i18n.h"
 #include "net.h"
+#include "ble.h"
 #include "ui.h"
 
 static uint8_t cycleCount = 0;      // 量測週期計數 (供上傳節流)
@@ -48,6 +49,9 @@ void setup() {
     sensorsInit();     // I2C / 1-Wire / ADC
     uiInit();          // 螢幕 + 主畫面
     netInit();         // WiFi (非阻塞)
+#if ENABLE_BLE
+    bleInit();         // BLE 讀值服務 (與 WiFi 共存)
+#endif
     Serial.println("Env Monitor ready.");
 }
 
@@ -76,6 +80,9 @@ void loop() {
 
         Serial.printf("AirT=%.2f AirH=%.2f WaterT=%.2f Soil=%d Level=%d\n",
                       airTemp, airHum, waterTemp, soilRaw, waterRaw);
+#if ENABLE_BLE
+        bleNotify();   // 推播感測值給已連線的手機 (BLE)
+#endif
 
         if (++cycleCount >= UPLOAD_EVERY_N_CYCLES) {   // 每 10 秒上傳一次
             cycleCount = 0;
