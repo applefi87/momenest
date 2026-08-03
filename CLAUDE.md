@@ -22,9 +22,9 @@ ESP32 + 3.5" 觸控螢幕的環境監測器（空氣溫濕度/水溫/土壤濕�
 | 感測值→JSON 序列化 | `EnvMonitor/reading_format.*`（net/BLE 共用，有 host 單元測試） |
 | BLE 讀值服務 | `EnvMonitor/ble.cpp`（NimBLE，契約見 `EnvMonitor/BLE.md`） |
 | host 單元測試 | `EnvMonitor/tests/`（g++ 跑純邏輯，非硬體） |
-| 手機 BLE App | `app/index.html`（Web Bluetooth，Android Chrome） |
+| 手機 BLE App | `cloud/src/ble-app.html`（Web Bluetooth，Android Chrome，路由 `/ble`） |
 | 雲端 API 邏輯 | `cloud/src/api.js`（D1 讀寫） |
-| 雲端網頁儀表板 | `cloud/src/dashboard.html`（wrangler Text 模組內嵌） |
+| 雲端網頁儀表板 | `cloud/src/dashboard.html`（路由 `/`，wrangler Text 模組內嵌） |
 | 雲端路由入口 | `cloud/src/index.js` |
 | 接線 | `EnvMonitor/WIRING.md` |
 

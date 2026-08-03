@@ -6,13 +6,14 @@
  *   GET  /api/data    — 公開查詢歷史 (?from=&to= unix秒, ?limit=)
  *   GET  /api/latest  — 公開查詢最新一筆
  *   GET  /            — 儀表板網頁 (dashboard.html，經 wrangler Text 規則內嵌)
- *   GET  /ble         — 手機 Web Bluetooth App (app/index.html，藍牙直連設備)
+ *   GET  /ble         — 手機 Web Bluetooth App (ble-app.html，藍牙直連設備)
  *
- * 模組：api.js = D1 讀寫；dashboard.html = 儀表板；../app/index.html = BLE App
+ * 模組：api.js = D1 讀寫；dashboard.html = 儀表板；ble-app.html = BLE App
+ *       (凡 Worker 託管的頁面都放這個 src/ 目錄，一個部署單位)
  */
 import { CORS, json, handleIngest, handleData, handleLatest } from './api.js';
 import DASHBOARD_HTML from './dashboard.html';
-import BLE_APP_HTML from '../../app/index.html';
+import BLE_APP_HTML from './ble-app.html';
 import { MANIFEST, SW_JS, ICON_SVG } from './pwa.js';
 import ICON_PNG from './icon-180.png';
 

@@ -1,6 +1,6 @@
 # cloud — Cloudflare Worker + D1 (免費方案)
 
-單一 Worker 包辦：ESP32 資料接收、公開查詢 API、手機儀表板網頁。
+單一 Worker 包辦：ESP32 資料接收、公開查詢 API、兩個手機網頁前端。
 
 ## API
 
@@ -9,7 +9,22 @@
 | `/api/ingest` | POST | 需 `X-API-Key` header | ESP32 上傳，時間戳由伺服器補 |
 | `/api/data?from=&to=&limit=` | GET | 公開 | 歷史區間 (unix 秒)，預設近 24h |
 | `/api/latest` | GET | 公開 | 最新一筆 |
-| `/` | GET | 公開 | 儀表板網頁 |
+| `/` | GET | 公開 | 儀表板網頁 (`dashboard.html`) |
+| `/ble` | GET | 公開 | 手機 BLE App (`ble-app.html`) |
+
+## 兩個網頁前端（都由 Worker 託管，都在 `src/`）
+
+| 頁面 | 檔案 | 資料來源 | 用途 |
+|------|------|---------|------|
+| 儀表板 `/` | `src/dashboard.html` | WiFi→雲端 D1（**有網路即可，人在外面也能看**） | 即時值 + 歷史圖表 |
+| BLE App `/ble` | `src/ble-app.html` | **藍牙直連設備**（就近、不經雲端） | 就近即時讀值 |
+
+- **凡 Worker 託管的頁面都放 `src/`**，`index.js` 以本地 import 內嵌，一個部署單位。
+- BLE App 放這裡是因為 **Web Bluetooth 需安全內容 (HTTPS)**，借 Worker 的 HTTPS
+  提供頁面；連上設備後資料走藍牙、不經雲端。手機用 **Android Chrome** 開
+  `.../ble`（iOS Safari 不支援 Web Bluetooth）。
+- BLE 的 GATT 契約 (UUID/JSON) 見 `../EnvMonitor/BLE.md`，是設備端與此頁的
+  單一事實來源。
 
 ## 部署步驟（一次性）
 

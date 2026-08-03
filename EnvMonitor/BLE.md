@@ -42,10 +42,10 @@ JSON 格式時，兩邊都要跟著改。
 1. Library Manager 裝 **NimBLE-Arduino**，Partition 選 Minimal SPIFFS，USB 燒錄
 2. 手機裝 **nRF Connect**（免費）→ 掃描 → 連 `env-monitor`
 3. 找到 Service `8f2a0001…`，對 `readings` 開 Notify → 應每秒收到感測 JSON
-4. 設備端正常後，再用 `../app/`（Web Bluetooth）連
+4. 設備端正常後，用手機 Android Chrome 開 `<worker>/ble`（Web Bluetooth）連
 
 ## 相關檔案
 
 - 設備端：`ble.cpp` / `ble.h`
 - 序列化：`reading_format.*`（+ `tests/`）
-- 手機 App：`../app/index.html`
+- 手機 App：`../cloud/src/ble-app.html`（Worker 路由 `/ble` 託管）
