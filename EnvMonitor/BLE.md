@@ -18,6 +18,8 @@ JSON 格式時，兩邊都要跟著改。
 | Service | `8f2a0001-b8c3-4e6a-9f1d-2a7c9e5b1a01` | — |
 | readings | `8f2a0002-b8c3-4e6a-9f1d-2a7c9e5b1a01` | Read + Notify |
 | status | `8f2a0003-b8c3-4e6a-9f1d-2a7c9e5b1a01` | Read + Notify |
+| ota_control | `8f2a0004-b8c3-4e6a-9f1d-2a7c9e5b1a01` | Write + Notify |
+| ota_data | `8f2a0005-b8c3-4e6a-9f1d-2a7c9e5b1a01` | Write (with response) |
 
 - 廣播名稱：`env-monitor`
 - 推播時機：每量測週期（約 1Hz）由 `bleNotify()` 更新；手機連著才 Notify
@@ -44,8 +46,39 @@ JSON 格式時，兩邊都要跟著改。
 3. 找到 Service `8f2a0001…`，對 `readings` 開 Notify → 應每秒收到感測 JSON
 4. 設備端正常後，用手機 Android Chrome 開 `<worker>/ble`（Web Bluetooth）連
 
+## BLE OTA（藍牙傳封包更新韌體）
+
+由 `config.h` 的 `ENABLE_BLE_OTA` 控制。設備端 `ble_ota.cpp`（協定解析
+`ota_protocol.*`，有 host 單元測試），手機端在 `/ble` 頁面選 `.bin` 後推送。
+
+**流程**：手機 → `ota_control` 寫 `[0x01][size LE32]`(BEGIN) → 分塊寫
+`ota_data`(每塊 ≤512B，Write With Response 天然流控) → `ota_control` 寫
+`[0x02]`(END)。設備用 `Update` 庫寫入另一個 OTA 分區，全收齊且驗證通過才
+切換啟動分區並重開機。
+
+**control notify 回報碼**（`[status][detail]`）：
+`0x01` BEGIN_OK、`0x02` END_OK、`0x03` ABORTED、`0x10` PROGRESS(+百分比)、
+`0xEE` ERROR(+detail)。
+
+**進度 %**：手機依已送位元組即時算(進度條)；設備依已收位元組算，
+顯示在螢幕(`uiDrawOta`)。
+
+**WiFi 影響與對策**：單天線 WiFi/BLE 共用，且每 10 秒 HTTPS 上傳的 TLS
+握手瞬吃 ~40KB heap——會搶天線並增加 OOM 風險。故 **OTA 期間主程式
+(`EnvMonitor.ino`) 以 `otaIsActive()` 暫停量測/UI/WiFi 上傳/BLE 推播/重連**，
+把資源全讓給傳輸；OTA 收發在 NimBLE 任務進行。傳完/中止後自動恢復。
+
+**失敗可復原**：任何錯誤、驗證失敗、或中途斷線 → `Update.abort()`，啟動
+分區不切換，舊韌體照跑（A/B 雙槽）。斷線由 `otaHandleDisconnect()` 處理。
+
+**重要前提**：
+- 設備上要**先有含 OTA 接收的韌體**才能被 BLE 更新（第一次仍需 USB 燒）
+- `.bin` 需在**電腦編譯**(Sketch → Export Compiled Binary)，手機不編譯
+- BLE 慢，1MB 韌體約數分鐘，傳輸中手機別鎖屏/離開
+
 ## 相關檔案
 
-- 設備端：`ble.cpp` / `ble.h`
+- 設備端讀值：`ble.cpp` / `ble.h`
+- 設備端 OTA：`ble_ota.cpp` / `ble_ota.h`、協定 `ota_protocol.*`（+ `tests/`）
 - 序列化：`reading_format.*`（+ `tests/`）
 - 手機 App：`../cloud/src/ble-app.html`（Worker 路由 `/ble` 託管）

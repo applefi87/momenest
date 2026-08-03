@@ -201,6 +201,50 @@ void uiDrawValues() {
 }
 
 // ==========================================
+// BLE OTA 進度畫面 (韌體更新中；只在 % 變動時重畫，避免閃爍)
+// ==========================================
+static bool otaScreenInit = false;
+static int  otaLastPct = -1;
+
+void uiDrawOta(int pct) {
+    if (!otaScreenInit) {
+        tft.fillScreen(COL_BG);
+        useFont_UI();
+        tft.setTextColor(COL_MUTED, COL_BG);
+        tft.setTextDatum(textdatum_t::middle_center);
+        tft.drawString("OTA UPDATING", 240, 96);
+        tft.setTextDatum(textdatum_t::top_left);
+        otaScreenInit = true;
+        otaLastPct = -1;
+    }
+    if (pct == otaLastPct) return;
+    otaLastPct = pct;
+
+    // 百分比大字
+    useFont_UI();
+    char buf[16];
+    snprintf(buf, sizeof(buf), "%d%%", pct);
+    tft.setTextColor(COL_ACCENT, COL_BG);
+    tft.setTextDatum(textdatum_t::middle_center);
+    tft.setTextPadding(160);
+    tft.drawString(buf, 240, 140);
+    tft.setTextPadding(0);
+    tft.setTextDatum(textdatum_t::top_left);
+
+    // 進度條
+    const int bw = 360, bx = (480 - bw) / 2, by = 175, bh = 18;
+    tft.drawRoundRect(bx, by, bw, bh, 6, COL_EDGE);
+    int fillw = (bw - 4) * pct / 100;
+    if (fillw > 0) tft.fillRoundRect(bx + 2, by + 2, fillw, bh - 4, 5, COL_ACCENT);
+}
+
+void uiExitOta() {
+    otaScreenInit = false;
+    otaLastPct = -1;
+    uiDrawMain();
+}
+
+// ==========================================
 // 觸控分發 (loop 已做單次觸發防彈跳)
 // 命中範圍比按鈕外擴數 px，較好按
 // ==========================================

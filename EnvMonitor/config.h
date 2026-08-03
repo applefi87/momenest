@@ -32,6 +32,10 @@ const unsigned long SOIL_PWR_LEAD  = 1;
 // 啟用需 Partition Scheme 選有 OTA 槽者 (Minimal SPIFFS 1.9MB APP with OTA)。
 #define ENABLE_BLE 1
 
+// BLE OTA：手機透過藍牙傳韌體更新 (需 ENABLE_BLE)。失敗自動 abort、
+// 舊韌體不變 (A/B 雙槽)；OTA 期間暫停 WiFi 上傳避免搶天線/RAM。
+#define ENABLE_BLE_OTA 1
+
 // ---- 螢幕保護 ----
 // 無觸控超過此時間熄屏（黑畫面停止重繪，防殘影），觸控喚醒
 const unsigned long SCREEN_TIMEOUT_MS = 5UL * 60 * 1000;

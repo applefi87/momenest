@@ -14,6 +14,8 @@ extern UiMode uiMode;
 void uiInit();                       // tft 初始化 + 畫主畫面
 void uiDrawMain();                   // 主畫面全部重繪 (切語言/離開編輯時)
 void uiDrawValues();                 // 主畫面數值更新 (每量測週期)
+void uiDrawOta(int pct);             // OTA 進行中的進度畫面 (0..100)
+void uiExitOta();                    // OTA 結束/中止後還原主畫面
 void uiDrawEditRaw();                // 編輯畫面即時原始讀值更新
 void uiHandleTouch(int x, int y);    // 觸控事件分發 (單次觸發)
 

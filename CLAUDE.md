@@ -21,6 +21,7 @@ ESP32 + 3.5" 觸控螢幕的環境監測器（空氣溫濕度/水溫/土壤濕�
 | WiFi / 雲端上傳 / OTA | `EnvMonitor/net.cpp`（密鑰在 `secrets.h`，不進版控） |
 | 感測值→JSON 序列化 | `EnvMonitor/reading_format.*`（net/BLE 共用，有 host 單元測試） |
 | BLE 讀值服務 | `EnvMonitor/ble.cpp`（NimBLE，契約見 `EnvMonitor/BLE.md`） |
+| BLE OTA 韌體更新 | `EnvMonitor/ble_ota.cpp` + 協定 `ota_protocol.*`（有 host 單元測試） |
 | host 單元測試 | `EnvMonitor/tests/`（g++ 跑純邏輯，非硬體） |
 | 手機 BLE App | `cloud/src/ble-app.html`（Web Bluetooth，Android Chrome，路由 `/ble`） |
 | 雲端 API 邏輯 | `cloud/src/api.js`（D1 讀寫） |
@@ -41,6 +42,9 @@ ESP32 + 3.5" 觸控螢幕的環境監測器（空氣溫濕度/水溫/土壤濕�
 - 觸控為單次觸發（放開才能再按），防彈跳在 `EnvMonitor.ino` 的 loop
 - BLE 讀值（`ble.cpp`，`config.h` 的 `ENABLE_BLE` 開關）與 WiFi 上傳共用
   `reading_format` 的 JSON 序列化；可測邏輯抽成純函式在 `tests/` 用 g++ 驗證（TDD）
+- BLE OTA（`ble_ota.cpp`，`ENABLE_BLE_OTA`）：手機傳 `.bin` 更新韌體，
+  OTA 期間主迴圈以 `otaIsActive()` 暫停 WiFi/量測讓出資源；失敗自動 abort
+  不動舊韌體（A/B 雙槽）。詳見 `BLE.md`
 - 依賴函式庫：LovyanGFX、OneWire、DallasTemperature、ArduinoJson、
   NimBLE-Arduino（BLE，啟用 ENABLE_BLE 時）
 - flash 不足時：Partition Scheme 改 `Minimal SPIFFS (1.9MB APP with OTA)`

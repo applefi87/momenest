@@ -11,6 +11,7 @@
 #if ENABLE_BLE
 
 #include "ble.h"
+#include "ble_ota.h"          // OTA characteristics (掛在同一個 service 上)
 #include "sensors.h"
 #include "reading_format.h"   // 感測值→JSON (與 WiFi 上傳共用，見 tests/)
 #include "net.h"              // uploadState
@@ -35,12 +36,14 @@ class ServerCB : public NimBLEServerCallbacks {
     }
     void onDisconnect(NimBLEServer*, NimBLEConnInfo&, int) override {
         clientConnected = false;
+        otaHandleDisconnect();          // OTA 進行中斷線 → 安全 abort，舊韌體不變
         NimBLEDevice::startAdvertising();
     }
 };
 
 void bleInit() {
     NimBLEDevice::init("env-monitor");
+    NimBLEDevice::setMTU(517);       // 大 MTU 讓 OTA 每筆封包更大、傳更快
 
     NimBLEServer* server = NimBLEDevice::createServer();
     server->setCallbacks(new ServerCB());
@@ -50,6 +53,9 @@ void bleInit() {
         READINGS_UUID, NIMBLE_PROPERTY::READ | NIMBLE_PROPERTY::NOTIFY);
     statusChar = svc->createCharacteristic(
         STATUS_UUID, NIMBLE_PROPERTY::READ | NIMBLE_PROPERTY::NOTIFY);
+#if ENABLE_BLE_OTA
+    otaSetup(svc);                   // 在同一 service 上加 OTA control/data characteristics
+#endif
     svc->start();
 
     // NimBLE 2.x：名稱與 128-bit UUID 同時放不進 31 bytes 廣播封包，

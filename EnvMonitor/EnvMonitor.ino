@@ -19,6 +19,7 @@
 #include "i18n.h"
 #include "net.h"
 #include "ble.h"
+#include "ble_ota.h"
 #include "ui.h"
 
 static uint8_t cycleCount = 0;      // 量測週期計數 (供上傳節流)
@@ -57,6 +58,22 @@ void setup() {
 
 void loop() {
     unsigned long now = millis();
+
+#if ENABLE_BLE_OTA
+    // ---- BLE OTA 進行中：暫停一切 (量測/UI/WiFi 上傳/BLE 推播)，把天線、RAM、
+    //      CPU 全讓給 OTA 傳輸；OTA 資料收發在 NimBLE 任務裡進行 ----
+    static bool wasOta = false;
+    if (otaIsActive()) {
+        uiDrawOta(otaPercentNow());   // 只更新進度畫面
+        wasOta = true;
+        return;                       // 成功會自動重開機；失敗/中止則下方還原
+    }
+    if (wasOta) {                     // OTA 中止後還原主畫面並喚醒螢幕
+        wasOta = false;
+        screenOn = true; lastTouchMs = now;
+        uiExitOta();
+    }
+#endif
 
     // ---- 觸控 (單次觸發：放開後才能再按)；熄屏時第一下只喚醒 ----
     uint16_t tx, ty;

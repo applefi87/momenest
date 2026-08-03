@@ -8,8 +8,17 @@ cd "$(dirname "$0")"
 CXX="${CXX:-g++}"
 FLAGS="-std=c++11 -Wall -Wextra -O0"
 
-echo "== 編譯測試 =="
-"$CXX" $FLAGS test_reading_format.cpp ../reading_format.cpp -o test_reading_format
+fail=0
 
-echo "== 執行測試 =="
-./test_reading_format
+echo "== reading_format =="
+"$CXX" $FLAGS test_reading_format.cpp ../reading_format.cpp -o test_reading_format
+./test_reading_format || fail=1
+
+echo ""
+echo "== ota_protocol =="
+"$CXX" $FLAGS test_ota_protocol.cpp ../ota_protocol.cpp -o test_ota_protocol
+./test_ota_protocol || fail=1
+
+echo ""
+[ $fail -eq 0 ] && echo "== 全部測試通過 ==" || echo "== 有測試失敗 =="
+exit $fail
