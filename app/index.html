@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#f5f5f7" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
+<title>環境監測 · 藍牙</title>
+<style>
+:root {
+  --bg:#f5f5f7; --card-bg:rgba(255,255,255,.72); --card-border:rgba(0,0,0,.06);
+  --card-shadow:0 2px 16px rgba(0,0,0,.04); --text-primary:#1d1d1f;
+  --text-secondary:#86868b; --accent:#007aff; --ok:#30d158; --err:#ff453a; --radius:16px;
+  --safe-top:env(safe-area-inset-top,0px);
+}
+@media (prefers-color-scheme:dark){:root{
+  --bg:#000; --card-bg:rgba(28,28,30,.72); --card-border:rgba(255,255,255,.08);
+  --card-shadow:0 2px 16px rgba(0,0,0,.3); --text-primary:#f5f5f7; --text-secondary:#98989d;
+}}
+*{margin:0;padding:0;box-sizing:border-box}
+body{
+  font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","PingFang TC","Noto Sans TC",system-ui,sans-serif;
+  background:var(--bg); color:var(--text-primary); -webkit-font-smoothing:antialiased;
+  padding:calc(var(--safe-top) + 16px) 16px 32px; min-height:100dvh;
+}
+.header{padding:8px 0 20px}
+.header h1{font-size:2rem;font-weight:700;letter-spacing:-.02em}
+.header .subtitle{font-size:.82rem;color:var(--text-secondary);margin-top:4px;display:flex;align-items:center;gap:6px}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--text-secondary);display:inline-block}
+.dot.on{background:var(--ok)} .dot.off{background:var(--err)}
+.btn{
+  display:block;width:100%;padding:15px;border:none;border-radius:14px;background:var(--accent);
+  color:#fff;font-size:1rem;font-weight:600;cursor:pointer;font-family:inherit;margin-bottom:20px;
+}
+.btn.secondary{background:var(--card-bg);color:var(--text-primary);border:1px solid var(--card-border)}
+.cards{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
+.cards .card:last-child:nth-child(odd){grid-column:1 / -1}
+.card{
+  background:var(--card-bg);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
+  border:1px solid var(--card-border);border-radius:var(--radius);padding:16px;box-shadow:var(--card-shadow);
+}
+.card .label{font-size:.72rem;font-weight:600;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.02em;display:flex;align-items:center;gap:5px}
+.card .label .cdot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
+.card .value{font-size:2rem;font-weight:500;letter-spacing:-.03em;margin-top:6px;font-variant-numeric:tabular-nums;transition:opacity .3s}
+.card .unit{font-size:1rem;font-weight:400;color:var(--text-secondary);margin-left:2px}
+.hint{font-size:.8rem;color:var(--text-secondary);line-height:1.6;margin-top:20px}
+.hint code{background:var(--card-bg);padding:1px 5px;border-radius:5px}
+.err{color:var(--err);font-size:.85rem;margin-top:12px}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>環境監測 · 藍牙</h1>
+  <div class="subtitle"><span class="dot" id="statusDot"></span><span id="statusText">未連接</span></div>
+</div>
+
+<button class="btn" id="connectBtn" onclick="toggle()">連接設備</button>
+
+<div class="cards" id="cards"></div>
+
+<div class="err" id="err"></div>
+
+<div class="hint" id="hint">
+  用 <b>Android Chrome</b> 開啟本頁 → 按「連接設備」→ 選 <code>env-monitor</code>。<br>
+  需開啟手機藍牙（Android 首次可能要求定位權限以掃描藍牙）。<br>
+  資料為設備就近直傳，不經網路；設備仍照常上傳雲端。
+</div>
+
+<script>
+// GATT 契約：必須與設備端 ble.cpp / BLE.md 完全一致
+const SVC_UUID      = '8f2a0001-b8c3-4e6a-9f1d-2a7c9e5b1a01';
+const READINGS_UUID = '8f2a0002-b8c3-4e6a-9f1d-2a7c9e5b1a01';
+const STATUS_UUID   = '8f2a0003-b8c3-4e6a-9f1d-2a7c9e5b1a01';
+
+const FIELDS = [
+  { key:'air_temp',    label:'氣溫', unit:'°C', color:'#ff9f0a', type:'temp' },
+  { key:'water_temp',  label:'水溫', unit:'°C', color:'#30d158', type:'temp' },
+  { key:'air_hum',     label:'濕度', unit:'%',  color:'#64d2ff', type:'temp' },
+  { key:'soil',        label:'土壤', unit:'',   color:'#ff6723', type:'adc' },
+  { key:'water_level', label:'水位', unit:'',   color:'#bf5af2', type:'adc' },
+];
+
+let device = null, server = null, latest = null;
+const dec = new TextDecoder();
+
+// 與雲端儀表板共用同一組校準值 (localStorage 'cal')：有校準就顯示 %
+function getCal(){ try{ return JSON.parse(localStorage.getItem('cal'))||{}; }catch{ return {}; } }
+function adcToPercent(key, raw){
+  const c = getCal();
+  if(key==='soil' && c.soilMin!=null && c.soilMax!=null)
+    return Math.round(Math.min(100,Math.max(0,(raw-c.soilMin)/(c.soilMax-c.soilMin)*100)));
+  if(key==='water_level' && c.waterMin!=null && c.waterMax!=null)
+    return Math.round(Math.min(100,Math.max(0,(raw-c.waterMin)/(c.waterMax-c.waterMin)*100)));
+  return null;
+}
+
+function renderCards(){
+  document.getElementById('cards').innerHTML = FIELDS.map(f=>{
+    let disp='--', unit=f.unit;
+    if(latest && latest[f.key]!=null){
+      if(f.type==='adc'){
+        const p=adcToPercent(f.key,latest[f.key]);
+        if(p!=null){ disp=p; unit='%'; } else { disp=latest[f.key]; unit=''; }
+      } else {
+        disp = Number.isInteger(latest[f.key]) ? latest[f.key] : Number(latest[f.key]).toFixed(1);
+      }
+    }
+    return '<div class="card"><div class="label"><span class="cdot" style="background:'+f.color+'"></span>'+f.label+
+           '</div><div class="value">'+disp+(unit?'<span class="unit">'+unit+'</span>':'')+'</div></div>';
+  }).join('');
+}
+
+function setStatus(text, state){
+  document.getElementById('statusText').textContent = text;
+  const d = document.getElementById('statusDot');
+  d.className = 'dot' + (state ? ' '+state : '');
+}
+function showErr(msg){ document.getElementById('err').textContent = msg || ''; }
+
+async function toggle(){
+  if(server && server.connected){ device.gatt.disconnect(); return; }
+  showErr('');
+  if(!navigator.bluetooth){
+    showErr('此瀏覽器不支援 Web Bluetooth，請用 Android Chrome。');
+    return;
+  }
+  try{
+    setStatus('搜尋中…');
+    device = await navigator.bluetooth.requestDevice({ filters:[{ services:[SVC_UUID] }] });
+    device.addEventListener('gattserverdisconnected', onDisconnect);
+    setStatus('連線中…');
+    server = await device.gatt.connect();
+    const svc = await server.getPrimaryService(SVC_UUID);
+
+    const rc = await svc.getCharacteristic(READINGS_UUID);
+    rc.addEventListener('characteristicvaluechanged', e=>{
+      try{ latest = JSON.parse(dec.decode(e.target.value)); renderCards(); }catch{}
+    });
+    await rc.startNotifications();
+    try{ latest = JSON.parse(dec.decode(await rc.readValue())); renderCards(); }catch{}
+
+    try{
+      const sc = await svc.getCharacteristic(STATUS_UUID);
+      sc.addEventListener('characteristicvaluechanged', e=>onStatus(e.target.value));
+      await sc.startNotifications();
+      onStatus(await sc.readValue());
+    }catch{}
+
+    setStatus('已連接 · ' + device.name, 'on');
+    document.getElementById('connectBtn').textContent = '中斷連接';
+    document.getElementById('connectBtn').classList.add('secondary');
+  }catch(e){
+    setStatus('未連接');
+    if(e && e.name!=='NotFoundError') showErr('連線失敗：'+(e.message||e));  // NotFoundError = 使用者取消選取
+  }
+}
+
+function onStatus(dv){
+  try{
+    const s = JSON.parse(dec.decode(dv));
+    const ip = s.ip ? (' · '+s.ip) : '';
+    const wifi = s.wifi ? 'WiFi 正常' : 'WiFi 斷線';
+    if(server && server.connected) setStatus('已連接 · '+wifi+ip, 'on');
+  }catch{}
+}
+
+function onDisconnect(){
+  setStatus('已中斷', 'off');
+  document.getElementById('connectBtn').textContent = '連接設備';
+  document.getElementById('connectBtn').classList.remove('secondary');
+}
+
+renderCards();
+</script>
+</body>
+</html>

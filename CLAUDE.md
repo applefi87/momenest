@@ -18,7 +18,11 @@ ESP32 + 3.5" 觸控螢幕的環境監測器（空氣溫濕度/水溫/土壤濕�
 | 校準編輯畫面 | `EnvMonitor/ui_edit.cpp` |
 | 感測器讀取邏輯 | `EnvMonitor/sensors.cpp` |
 | 校準值預設與 NVS 儲存 | `EnvMonitor/calibration.cpp` |
-| WiFi / 雲端上傳 | `EnvMonitor/net.cpp`（密鑰在 `secrets.h`，不進版控） |
+| WiFi / 雲端上傳 / OTA | `EnvMonitor/net.cpp`（密鑰在 `secrets.h`，不進版控） |
+| 感測值→JSON 序列化 | `EnvMonitor/reading_format.*`（net/BLE 共用，有 host 單元測試） |
+| BLE 讀值服務 | `EnvMonitor/ble.cpp`（NimBLE，契約見 `EnvMonitor/BLE.md`） |
+| host 單元測試 | `EnvMonitor/tests/`（g++ 跑純邏輯，非硬體） |
+| 手機 BLE App | `app/index.html`（Web Bluetooth，Android Chrome） |
 | 雲端 API 邏輯 | `cloud/src/api.js`（D1 讀寫） |
 | 雲端網頁儀表板 | `cloud/src/dashboard.html`（wrangler Text 模組內嵌） |
 | 雲端路由入口 | `cloud/src/index.js` |
@@ -35,8 +39,12 @@ ESP32 + 3.5" 觸控螢幕的環境監測器（空氣溫濕度/水溫/土壤濕�
 - 多語系：`lang.h` 內嵌 JSON → `i18n.cpp` 以 ArduinoJson 解析；
   中文用 LovyanGFX 內建 `efontTW_16`，英文用內建 Font2/Font4
 - 觸控為單次觸發（放開才能再按），防彈跳在 `EnvMonitor.ino` 的 loop
-- 依賴函式庫：LovyanGFX、OneWire、DallasTemperature、ArduinoJson
-- flash 不足時：Arduino IDE → Tools → Partition Scheme → Huge APP
+- BLE 讀值（`ble.cpp`，`config.h` 的 `ENABLE_BLE` 開關）與 WiFi 上傳共用
+  `reading_format` 的 JSON 序列化；可測邏輯抽成純函式在 `tests/` 用 g++ 驗證（TDD）
+- 依賴函式庫：LovyanGFX、OneWire、DallasTemperature、ArduinoJson、
+  NimBLE-Arduino（BLE，啟用 ENABLE_BLE 時）
+- flash 不足時：Partition Scheme 改 `Minimal SPIFFS (1.9MB APP with OTA)`
+  （保留 OTA 槽；用 BLE 時勿選 Huge APP，它無 OTA 槽）
 
 ## cloud（Cloudflare Worker）
 
