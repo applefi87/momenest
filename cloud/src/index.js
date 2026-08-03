@@ -6,11 +6,13 @@
  *   GET  /api/data    — 公開查詢歷史 (?from=&to= unix秒, ?limit=)
  *   GET  /api/latest  — 公開查詢最新一筆
  *   GET  /            — 儀表板網頁 (dashboard.html，經 wrangler Text 規則內嵌)
+ *   GET  /ble         — 手機 Web Bluetooth App (app/index.html，藍牙直連設備)
  *
- * 模組：api.js = D1 讀寫；dashboard.html = 儀表板網頁
+ * 模組：api.js = D1 讀寫；dashboard.html = 儀表板；../app/index.html = BLE App
  */
 import { CORS, json, handleIngest, handleData, handleLatest } from './api.js';
 import DASHBOARD_HTML from './dashboard.html';
+import BLE_APP_HTML from '../../app/index.html';
 import { MANIFEST, SW_JS, ICON_SVG } from './pwa.js';
 import ICON_PNG from './icon-180.png';
 
@@ -32,6 +34,13 @@ export default {
           // 每次都向伺服器驗證，避免部署新版後瀏覽器仍用舊快取
           'Cache-Control': 'no-cache',
         },
+      });
+    }
+
+    // ---- 手機 BLE App (Web Bluetooth，藍牙直連設備，不經雲端資料) ----
+    if (path === '/ble' && request.method === 'GET') {
+      return new Response(BLE_APP_HTML, {
+        headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-cache' },
       });
     }
 
