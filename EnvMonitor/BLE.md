@@ -1,8 +1,10 @@
 # BLE 讀值服務 — GATT 契約
 
 手機以 BLE 就近即時取得感測值；設備仍照常 WiFi 上傳雲端（WiFi + BLE 共存）。
-本檔是**設備端（`ble.cpp`）與手機 App（`../app/`）的單一事實來源**——改 UUID 或
-JSON 格式時，兩邊都要跟著改。
+本檔是**設備端（`ble.cpp`）與手機端（原生 App `../android/`、備援網頁版
+`../cloud/src/ble-app.html`）的單一事實來源**——改 UUID 或 JSON 格式時，
+所有端都要跟著改（Android 端的契約在
+`android/core/protocol/.../GattContract.kt`，須與本表逐字一致）。
 
 ## 依賴與設定
 
@@ -20,9 +22,12 @@ JSON 格式時，兩邊都要跟著改。
 | status | `8f2a0003-b8c3-4e6a-9f1d-2a7c9e5b1a01` | Read + Notify |
 | ota_control | `8f2a0004-b8c3-4e6a-9f1d-2a7c9e5b1a01` | Write + Notify |
 | ota_data | `8f2a0005-b8c3-4e6a-9f1d-2a7c9e5b1a01` | Write (with response) |
+| device_info | `8f2a0006-b8c3-4e6a-9f1d-2a7c9e5b1a01` | Read + Notify |
 
 - 廣播名稱：`env-monitor`
 - 推播時機：每量測週期（約 1Hz）由 `bleNotify()` 更新；手機連著才 Notify
+- **舊韌體沒有 `device_info`**（1.0.x）；App 找不到時要當「版本未知」處理，
+  不可視為連線失敗
 
 ## 資料格式（UTF-8 JSON 字串）
 
@@ -38,6 +43,16 @@ JSON 格式時，兩邊都要跟著改。
 {"wifi":1,"upload":1,"ip":"192.168.31.158"}
 ```
 - `wifi` 1/0；`upload` 0=尚未 1=成功 2=失敗；`ip` 未連線時為空字串
+
+**device_info**：
+```json
+{"fw":"1.1.0","built":"Aug  4 2026","chip":"esp32","heap":123456}
+```
+- `fw` = `config.h` 的 `FIRMWARE_VERSION`（改韌體行為時手動 bump）
+- `built` = 編譯器的 `__DATE__`，格式固定為 `"Mmm  d yyyy"`（日期個位數時是**兩個空格**）
+- `heap` = `ESP.getFreeHeap()`，隨每次 `bleNotify()` 更新
+- **用途**：OTA 更新後手機沒有其他方法確認灌進去的是哪一版；重新連線讀這支
+  比對 `fw` 才算真正驗證更新成功
 
 ## 驗證（不必寫 App，先確認設備端）
 

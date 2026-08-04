@@ -182,7 +182,10 @@ async function toggle(){
       otaCtrl.addEventListener('characteristicvaluechanged', e=>onOtaStatus(e.target.value));
       await otaCtrl.startNotifications();
       document.getElementById('otaSection').style.display = 'block';
-    }catch{ otaCtrl = otaData = null; }
+    }catch(otaErr){
+      otaCtrl = otaData = null;
+      showErr('OTA 服務不可用：'+(otaErr && otaErr.message || otaErr));
+    }
 
     setStatus('已連接 · ' + device.name, 'on');
     document.getElementById('connectBtn').textContent = '中斷連接';

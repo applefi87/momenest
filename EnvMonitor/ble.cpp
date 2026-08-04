@@ -4,7 +4,8 @@
  * 依賴函式庫：NimBLE-Arduino 2.x (Library Manager 安裝)。
  *   註：2.x 的 ServerCallbacks 多了 NimBLEConnInfo& 參數、廣播改用
  *   setName/enableScanResponse，與 1.x 不相容。
- * GATT 契約 (UUID / JSON 格式) 見 BLE.md，與 app/ 手機端一致。
+ * GATT 契約 (UUID / JSON 格式) 見 BLE.md，與手機端 (../android/ 原生 App、
+ * 備援的 ../cloud/src/ble-app.html 網頁版) 一致。
  **********************************************************************/
 #include "config.h"
 
@@ -24,10 +25,28 @@
 static const char* SVC_UUID      = "8f2a0001-b8c3-4e6a-9f1d-2a7c9e5b1a01";
 static const char* READINGS_UUID = "8f2a0002-b8c3-4e6a-9f1d-2a7c9e5b1a01"; // 感測值 JSON
 static const char* STATUS_UUID   = "8f2a0003-b8c3-4e6a-9f1d-2a7c9e5b1a01"; // wifi/upload/ip
+static const char* INFO_UUID     = "8f2a0006-b8c3-4e6a-9f1d-2a7c9e5b1a01"; // 韌體版本/heap
 
 static NimBLECharacteristic* readingsChar = nullptr;
 static NimBLECharacteristic* statusChar   = nullptr;
+static NimBLECharacteristic* infoChar     = nullptr;
 static bool clientConnected = false;
+
+// 設備自報資訊。fw/built/chip 是編譯期常數，heap 每次更新 —— OTA 後手機讀
+// 這支就能確認實際跑的是哪一版韌體 (更新前後版本號應該不同)，heap 則方便
+// 遠端判斷記憶體是否吃緊。
+static void buildInfoJson(char* buf, size_t cap) {
+    snprintf(buf, cap,
+             "{\"fw\":\"%s\",\"built\":\"%s\",\"chip\":\"esp32\",\"heap\":%u}",
+             FIRMWARE_VERSION, FIRMWARE_BUILD_DATE, (unsigned)ESP.getFreeHeap());
+}
+
+static void updateInfoChar() {
+    if (!infoChar) return;
+    char info[128];
+    buildInfoJson(info, sizeof(info));
+    infoChar->setValue((const uint8_t*)info, strlen(info));
+}
 
 // 斷線後自動重新廣播，讓手機能再次連上 (NimBLE 2.x callback 簽章)
 class ServerCB : public NimBLEServerCallbacks {
@@ -53,6 +72,9 @@ void bleInit() {
         READINGS_UUID, NIMBLE_PROPERTY::READ | NIMBLE_PROPERTY::NOTIFY);
     statusChar = svc->createCharacteristic(
         STATUS_UUID, NIMBLE_PROPERTY::READ | NIMBLE_PROPERTY::NOTIFY);
+    infoChar = svc->createCharacteristic(
+        INFO_UUID, NIMBLE_PROPERTY::READ | NIMBLE_PROPERTY::NOTIFY);
+    updateInfoChar();                // 先填好初值，手機一連上 Read 就有東西
 #if ENABLE_BLE_OTA
     otaSetup(svc);                   // 在同一 service 上加 OTA control/data characteristics
 #endif
@@ -87,10 +109,14 @@ void bleNotify() {
              wifiUp ? WiFi.localIP().toString().c_str() : "");
     statusChar->setValue((const uint8_t*)st, strlen(st));
 
+    // 設備資訊：只有 heap 會變，但整包重建比較單純 (每秒一次成本可忽略)
+    updateInfoChar();
+
     // 只有手機連著才推播 (省射頻)；未連線時上面已更新值，供下次 Read
     if (clientConnected) {
         readingsChar->notify();
         statusChar->notify();
+        if (infoChar) infoChar->notify();
     }
 }
 

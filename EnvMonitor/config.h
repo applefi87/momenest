@@ -4,6 +4,13 @@
 #pragma once
 #include <Arduino.h>
 
+// ---- 韌體版本 ----
+// OTA 更新後手機無法從畫面確認灌進去的到底是哪一版，所以設備要主動報版本：
+// 這兩個值會塞進 BLE 的 device_info characteristic (見 ble.cpp、BLE.md)。
+// 改動韌體行為時手動 bump FIRMWARE_VERSION；建置日期由編譯器填 (如 "Aug  4 2026")。
+#define FIRMWARE_VERSION    "1.1.0"
+#define FIRMWARE_BUILD_DATE __DATE__
+
 // ---- 感測器腳位 ----
 #define PIN_ONEWIRE   25    // DS18B20 水溫
 #define PIN_WATER_LVL 33    // 水位 類比讀取

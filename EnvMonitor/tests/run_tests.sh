@@ -20,5 +20,10 @@ echo "== ota_protocol =="
 ./test_ota_protocol || fail=1
 
 echo ""
+echo "== crc32 =="
+"$CXX" $FLAGS test_crc32.cpp ../ota_protocol.cpp -o test_crc32
+./test_crc32 || fail=1
+
+echo ""
 [ $fail -eq 0 ] && echo "== 全部測試通過 ==" || echo "== 有測試失敗 =="
 exit $fail
