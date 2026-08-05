@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    :app 的 manifest。
+
+    藍牙相關的 uses-permission / uses-feature 刻意「不」寫在這裡：
+    它們宣告在 :core:ble 的 manifest，由 manifest merger 合併進來。
+    這樣「用到 BLE 的模組」與「宣告 BLE 權限的模組」是同一個，
+    日後若把 :core:ble 換掉，權限也會跟著消失，不會留下孤兒宣告。
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <application
+        android:name=".EnvMonitorApplication"
+        android:allowBackup="true"
+        android:label="@string/app_name"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.EnvMonitor"
+        android:icon="@android:drawable/ic_dialog_info">
+        <!--
+            icon 暫時借用系統內建圖示：自製 launcher 圖示是二進位檔，
+            目前的產生環境無法生成。之後補上 res/mipmap 的自製圖示後，
+            改回 android:icon="@mipmap/ic_launcher" 並補上 roundIcon。
+        -->
+
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:label="@string/app_name"
+            android:theme="@style/Theme.EnvMonitor">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+    </application>
+
+</manifest>

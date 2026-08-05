@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    深色模式下的啟動主題。
+
+    只影響 Compose 接手之前那一幀的視窗底色。少了這個檔案，深色模式開 App
+    會先閃一下白底再變黑，體感很像當機。
+-->
+<resources>
+    <style name="Theme.EnvMonitor" parent="android:Theme.Material.NoActionBar" />
+</resources>

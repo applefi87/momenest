@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Activity 啟動用的 XML 主題。
+
+    只負責「Compose 接手之前」那一瞬間的視窗外觀（開場白畫面），
+    真正的配色由 :core:designsystem 的 EnvMonitorTheme（Material 3）決定。
+
+    parent 用平台內建的 android:Theme.Material.Light.NoActionBar 而不是
+    Theme.AppCompat / Theme.MaterialComponents：本專案沒有 AppCompat 相依，
+    引用不存在的 parent 會在資源編譯階段直接失敗。
+    NoActionBar 則是因為畫面全由 Compose 繪製，系統 ActionBar 只會多一條灰帶。
+-->
+<resources>
+    <style name="Theme.EnvMonitor" parent="android:Theme.Material.Light.NoActionBar" />
+</resources>

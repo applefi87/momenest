@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    App 層的字串資源。
+
+    只放「組裝層自己會用到」的文字（App 名稱、權限說明）；
+    各畫面的文案留在各自的 feature 模組，才不會改一句話要跨模組翻找。
+-->
+<resources>
+    <string name="app_name">漫嶼環境監測器</string>
+
+    <!-- 權限閘門 -->
+    <string name="permission_title">需要藍牙權限</string>
+    <string name="permission_rationale_nearby">本 App 以低功耗藍牙直接連線環境監測器，讀取即時數值並更新韌體。Android 12 起系統要求「附近的裝置」權限才能搜尋與連線，請於系統對話框中允許。</string>
+    <string name="permission_rationale_location">本 App 以低功耗藍牙直接連線環境監測器，讀取即時數值並更新韌體。Android 11 以前的系統把藍牙掃描視為可能推測位置的行為，因此必須授予「位置」權限才搜尋得到設備。</string>
+    <string name="permission_denied_hint">若先前選過「不要再詢問」，系統不會再跳出對話框，請改由系統設定手動開啟後返回本頁。</string>
+    <string name="permission_grant">授予權限</string>
+    <string name="permission_open_settings">前往系統設定</string>
+</resources>
