@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    :core:ble 的 manifest。
+
+    這裡宣告 BLE 模組運作所需的所有權限與硬體特性。
+    由於 AGP 的 manifest merger 機制，只要 app 模組依賴了 :core:ble，
+    這些宣告就會自動合併進最終的 APK manifest，不必在 app 模組重複寫。
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- Android 12 (API 31) 以上需要的權限 -->
+    <uses-permission android:name="android.permission.BLUETOOTH_SCAN"
+        android:usesPermissionFlags="neverForLocation" />
+    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
+
+    <!-- Android 11 (API 30) 以下需要的權限 -->
+    <uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30" />
+    <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" android:maxSdkVersion="30" />
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" android:maxSdkVersion="30" />
+
+    <!-- 宣告硬體限制：本 App 必須有 BLE 硬體才能執行，掃描不到 BLE 的手機在 Play Store 會被隱藏 -->
+    <uses-feature android:name="android.hardware.bluetooth_le" android:required="true" />
+
+</manifest>
