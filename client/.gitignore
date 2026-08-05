@@ -9,6 +9,10 @@ build/
 .cxx
 local.properties
 
+# Kotlin 2.0 / KMP 建置產生的暫存目錄（內含絕對路徑，換機器就失效）
+.kotlin/
+.artifacts/
+
 # Gradle wrapper 的 jar 是二進位檔，由 `gradle wrapper` 或 Android Studio 產生
 # （若團隊要求 wrapper 進版控，把下面這行刪掉並確實 commit 該 jar）
 gradle/wrapper/gradle-wrapper.jar
