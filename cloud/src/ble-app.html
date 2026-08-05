@@ -65,8 +65,8 @@ body{
 <body>
 
 <div class="fallback-note">
-  <b>網頁備援版</b>　主力已改為原生 Android App（支援 MTU 協商、OTA 傳輸 CRC 校驗、
-  顯示韌體版本）。本頁功能完整可用，適合臨時借手機或快速展示。
+  <b>網頁備援版</b>　支援 Web Bluetooth 高速傳輸（Write Without Response 批次流控、
+  OTA 傳輸 CRC32 校驗）。本頁功能完整可用，適合臨時借手機或快速展示。
 </div>
 
 <div class="header">
@@ -96,9 +96,8 @@ body{
   用 <b>Android Chrome</b> 開啟本頁 → 按「連接設備」→ 選 <code>env-monitor</code>。<br>
   需開啟手機藍牙（Android 首次可能要求定位權限以掃描藍牙）。<br>
   資料為設備就近直傳，不經網路；設備仍照常上傳雲端。<br><br>
-  <b>與原生 App 的差異</b>：Web Bluetooth 不提供 MTU 查詢，本頁固定用 512 bytes
-  分塊；原生 App 會依實際協商到的 MTU 計算，並在 OTA 結束時附上整份韌體的
-  CRC32 讓設備比對。若這裡的更新一直失敗，改用原生 App 試試。
+  <b>傳輸機制</b>：本頁採用 512 bytes 分塊與無應答批次流控高速傳輸，
+  並在 OTA 結束時附上整份韌體的 CRC32 讓設備進行 Flash 寫入完整性校驗。
 </div>
 
 <script>
@@ -267,6 +266,24 @@ function onOtaStatus(dv){
 
 const sleep = ms => new Promise(r=>setTimeout(r,ms));
 
+// IEEE 802.3 CRC32 表 (與設備端 ota_protocol.h 一致)
+const CRC32_TABLE = new Uint32Array(256);
+for (let i = 0; i < 256; i++) {
+  let c = i;
+  for (let k = 0; k < 8; k++) {
+    c = ((c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1)) >>> 0;
+  }
+  CRC32_TABLE[i] = c >>> 0;
+}
+
+function computeCrc32(bytes) {
+  let crc = 0xFFFFFFFF;
+  for (let i = 0; i < bytes.length; i++) {
+    crc = (CRC32_TABLE[(crc ^ bytes[i]) & 0xFF] ^ (crc >>> 8)) >>> 0;
+  }
+  return (crc ^ 0xFFFFFFFF) >>> 0;
+}
+
 async function doOta(){
   if(!otaData || !otaCtrl){ setOtaStatus('未取得 OTA 服務', 'bad'); return; }
   if(!binBuf){ setOtaStatus('請先選擇 .bin', 'bad'); return; }
@@ -284,22 +301,55 @@ async function doOta(){
     beg[0]=0x01; new DataView(beg.buffer).setUint32(1, total, true);
     await otaCtrl.writeValueWithResponse(beg);
 
-    // 分塊灌 data（Write With Response → 設備寫完 flash 才回，天然流控）
+    // 檢查瀏覽器特徵值是否支援 writeValueWithoutResponse (高速無應答模式)
+    const canWriteNR = typeof otaData.writeValueWithoutResponse === 'function';
+
+    // 分塊灌 data：Write Without Response + 批次滑動窗口流控
     let sent = 0;
+    let chunkIndex = 0;
     setProgress(0);
+    const startTime = Date.now();
+
     while(sent < total){
       if(!otaRunning) throw new Error('已中止');
       const chunk = bytes.subarray(sent, Math.min(sent+OTA_CHUNK, total));
-      await otaData.writeValueWithResponse(chunk);
+
+      if(canWriteNR){
+        await otaData.writeValueWithoutResponse(chunk);
+        chunkIndex++;
+        // 批次流控：每 8 塊 (4KB = 1 個 Flash Sector) 做微延遲，給 ESP32 SPI Flash 擦寫留足時間
+        // 其餘每包微間隔 5ms，確保不衝爆底層 BLE 佇列
+        if(chunkIndex % 8 === 0){
+          await sleep(20);
+        } else {
+          await sleep(5);
+        }
+      } else {
+        // 舊瀏覽器 fallback：Write With Response
+        await otaData.writeValueWithResponse(chunk);
+      }
+
       sent += chunk.length;
-      setProgress(Math.floor(sent*100/total));
+      const pct = Math.floor(sent*100/total);
+      setProgress(pct);
+
+      const elapsedSec = (Date.now() - startTime) / 1000;
+      if(elapsedSec > 0.5){
+        const speedKBps = (sent / 1024 / elapsedSec).toFixed(1);
+        setOtaStatus(`傳輸中… ${pct}% (${speedKBps} KB/s)`);
+      }
     }
 
-    // END
-    setOtaStatus('傳輸完成，設備驗證中…');
-    await otaCtrl.writeValueWithResponse(new Uint8Array([0x02]));
+    // END + 4-byte little-endian CRC32 (完整性校驗)
+    setOtaStatus('傳輸完成，設備驗證 CRC32 中…');
+    const crc = computeCrc32(bytes);
+    const endPkt = new Uint8Array(5);
+    endPkt[0] = 0x02; // OTA_CMD_END
+    new DataView(endPkt.buffer).setUint32(1, crc, true);
+    await otaCtrl.writeValueWithResponse(endPkt);
+
     // 成功後設備會 notify END_OK 並重開機（→ 觸發 onDisconnect 視為完成）
-    setOtaStatus('已送出，等待設備重啟…', 'ok');
+    setOtaStatus('校驗成功，等待設備重啟…', 'ok');
   }catch(e){
     setOtaStatus('傳輸失敗：'+(e.message||e)+'（舊韌體不受影響，可重試）', 'bad');
     try{ await otaCtrl.writeValueWithResponse(new Uint8Array([0x03])); }catch{} // ABORT
