@@ -214,6 +214,9 @@ class AndroidEnvMonitorClient(
 
         gattTransport.enableNotifications(GattContract.READINGS_UUID)
         gattTransport.enableNotifications(GattContract.STATUS_UUID)
+        if (gattTransport.hasCharacteristic(GattContract.OTA_CONTROL_UUID)) {
+            gattTransport.enableNotifications(GattContract.OTA_CONTROL_UUID)
+        }
 
         gattTransport.read(GattContract.READINGS_UUID)
             ?.let { ReadingParser.parse(it) }
