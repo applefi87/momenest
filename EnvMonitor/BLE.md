@@ -21,11 +21,12 @@
 | readings | `8f2a0002-b8c3-4e6a-9f1d-2a7c9e5b1a01` | Read + Notify |
 | status | `8f2a0003-b8c3-4e6a-9f1d-2a7c9e5b1a01` | Read + Notify |
 | ota_control | `8f2a0004-b8c3-4e6a-9f1d-2a7c9e5b1a01` | Write + Notify |
-| ota_data | `8f2a0005-b8c3-4e6a-9f1d-2a7c9e5b1a01` | Write (with response) |
+| ota_data | `8f2a0005-b8c3-4e6a-9f1d-2a7c9e5b1a01` | Write + Write without response |
 | device_info | `8f2a0006-b8c3-4e6a-9f1d-2a7c9e5b1a01` | Read + Notify |
 
 - 廣播名稱：`env-monitor`
 - 推播時機：每量測週期（約 1Hz）由 `bleNotify()` 更新；手機連著才 Notify
+- 連線參數：設備於連線時主動請求 7.5ms ~ 15ms 高速連線間隔，大幅提升傳輸率
 - **舊韌體沒有 `device_info`**（1.0.x）；App 找不到時要當「版本未知」處理，
   不可視為連線失敗
 
@@ -67,8 +68,8 @@
 `ota_protocol.*`，有 host 單元測試），手機端在 `/ble` 頁面選 `.bin` 後推送。
 
 **流程**：手機 → `ota_control` 寫 `[0x01][size LE32]`(BEGIN) → 分塊寫
-`ota_data`(每塊 ≤512B，Write With Response 天然流控) → `ota_control` 寫
-`[0x02]`(END)。設備用 `Update` 庫寫入另一個 OTA 分區，全收齊且驗證通過才
+`ota_data`(每塊 ≤512B，支援 Write With Response 或 Write Without Response 高速批次流控) → `ota_control` 寫
+`[0x02][crc32 LE32]`(END + CRC32 校驗)。設備用 `Update` 庫寫入另一個 OTA 分區，全收齊且驗證通過才
 切換啟動分區並重開機。
 
 **control notify 回報碼**（`[status][detail]`）：
