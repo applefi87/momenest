@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  :feature:monitor 的 manifest。
+
+  這個模組沒有自己的元件（Activity/Service）也不需要額外權限——BLE 權限由
+  :core:ble 的 manifest 宣告並在 :app 的權限閘門請求，所以這裡只留空標籤，
+  讓 AGP 有東西可以合併。
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+</manifest>
