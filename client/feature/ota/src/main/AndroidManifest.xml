@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  :feature:ota 的 manifest 刻意保持空白。
+
+  這個模組只有畫面與 ViewModel，沒有 Activity/Service 之類的元件；
+  BLE 相關權限一律由 :core:ble 的 manifest 宣告，讓「誰用硬體誰宣告權限」
+  這條線保持乾淨，日後拿掉 BLE 也不必回頭清 feature 模組。
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android" />
