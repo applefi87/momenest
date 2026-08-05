@@ -148,7 +148,7 @@ void otaSetup(NimBLEService* svc) {
     ctrlChar->setCallbacks(new CtrlCB());
 
     NimBLECharacteristic* dataChar = svc->createCharacteristic(
-        OTA_DATA_UUID, NIMBLE_PROPERTY::WRITE);   // Write With Response → 天然流控
+        OTA_DATA_UUID, NIMBLE_PROPERTY::WRITE | NIMBLE_PROPERTY::WRITE_NR);   // 支援 Write 與 Write Without Response (高速)
     dataChar->setCallbacks(new DataCB());
 }
 

@@ -50,8 +50,10 @@ static void updateInfoChar() {
 
 // 斷線後自動重新廣播，讓手機能再次連上 (NimBLE 2.x callback 簽章)
 class ServerCB : public NimBLEServerCallbacks {
-    void onConnect(NimBLEServer*, NimBLEConnInfo&) override {
+    void onConnect(NimBLEServer* server, NimBLEConnInfo& connInfo) override {
         clientConnected = true;
+        // 主動請求高速連線參數 (7.5ms ~ 15ms)，大幅提升 BLE OTA 傳輸吞吐量
+        server->updateConnParams(connInfo.getConnHandle(), 6, 12, 0, 400);
     }
     void onDisconnect(NimBLEServer*, NimBLEConnInfo&, int) override {
         clientConnected = false;
