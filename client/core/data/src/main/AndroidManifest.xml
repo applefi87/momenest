@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  :core:data 不需要任何權限或元件（DataStore 寫在 App 私有目錄），
+  但 AGP 仍要求 library 模組有 manifest，故保留一個空的 manifest 標籤。
+  package 屬性刻意不寫：AGP 8 起改由 build.gradle.kts 的 namespace 決定。
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+</manifest>

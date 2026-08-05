@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  :core:testing 的空 manifest。
+
+  這個模組不含任何 Android 元件、權限或資源，但 AGP 的 library 外掛仍要求
+  每個模組都有 manifest 才能合併（namespace 已寫在 build.gradle.kts，
+  故這裡不需要 package 屬性）。
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android" />

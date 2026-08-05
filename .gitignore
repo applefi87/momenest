@@ -65,7 +65,10 @@ vcpkg_installed/
 *.dwo
 
 # test output & cache
-Testing/
+# 注意：必須加開頭的 / 錨定在根目錄。沒錨定的 `Testing/` 會匹配任何層級的
+# testing 目錄（Windows 的 git 預設不分大小寫），曾把整個
+# client/core/testing/ 模組排除在版控外，導致他人 clone 後直接建置失敗。
+/Testing/
 .cache/
 
 # 機密設定 (勿 commit)
