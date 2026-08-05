@@ -25,7 +25,7 @@ ESP32 + 3.5" TFT 觸控螢幕的環境監測系統，每秒更新空氣溫濕度
 - Tools → Board → esp32 → **ESP32 Dev Module**
   - 不要選 ESP32**S3** / S2 / C3 Dev Module——本板是 ESP32-WROOM-E（Xtensa LX6 雙核），選 S3 會編譯失敗
 - Flash Size: 4MB（預設）
-- Partition Scheme: Default（含中文介面字型，flash 不足時改 **Huge APP**）
+- Partition Scheme: **Minimal SPIFFS (Large APPS with OTA)**（含 1.9MB 雙 OTA 分區，支援 BLE OTA 更新；勿選 Huge APP 因其不支援 OTA）
 - Upload Speed: 921600（上傳不穩改 115200）
 - USB 驅動：板載 CP2102，需安裝 Silicon Labs CP210x 驅動
 
