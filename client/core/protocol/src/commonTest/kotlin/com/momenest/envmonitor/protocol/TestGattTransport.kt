@@ -144,6 +144,11 @@ class TestGattTransport(private var mtu: Int = GattContract.PREFERRED_MTU) : Gat
         }
     }
 
+    override suspend fun writeNoResponse(characteristic: BleUuid, value: ByteArray) {
+        // 在測試替身中，writeNoResponse 與 write 共享記錄與錯誤注入邏輯
+        write(characteristic, value)
+    }
+
     override fun notifications(characteristic: BleUuid): Flow<ByteArray> =
         flowFor(characteristic).asSharedFlow()
 

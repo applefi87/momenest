@@ -119,7 +119,9 @@ class AndroidEnvMonitorClient(
             }
         }
 
-        // 先協商 MTU 再探索服務：MTU 影響 OTA 每筆能寫多少，越早定案越好
+        // 請求 2M PHY、設定最高傳輸優先權（最小連線間隔 11.25~15ms）並協商大 MTU
+        gattTransport.requestPhy2M()
+        gattTransport.requestHighPriority()
         gattTransport.requestMtu()
 
         if (!gattTransport.discoverServices()) {
@@ -146,6 +148,8 @@ class AndroidEnvMonitorClient(
                 OtaEvent.Failed(OtaFailure.TRANSPORT_ERROR, "此設備的韌體不支援 BLE OTA"),
             )
         }
+        gattTransport.requestHighPriority()
+        gattTransport.requestPhy2M()
         return OtaUploader(gattTransport).upload(bytes)
     }
 

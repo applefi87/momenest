@@ -98,6 +98,7 @@ class OtaUploader(
             // ---------- 灌位元組 ----------
             var sent = 0L
             var lastPercent = -1
+            var chunkIndex = 0
             for (chunk in FirmwareChunker.chunks(firmware, chunkSize)) {
                 // 每塊之前檢查設備有沒有中途喊停，避免對著已經放棄的設備繼續灌好幾分鐘
                 pendingProblem(reports)?.let {
@@ -105,9 +106,18 @@ class OtaUploader(
                     return@channelFlow
                 }
 
-                writeErrorOrNull(GattContract.OTA_DATA_UUID, chunk)?.let {
+                writeNoResponseErrorOrNull(GattContract.OTA_DATA_UUID, chunk)?.let {
                     send(OtaEvent.Failed(OtaFailure.TRANSPORT_ERROR, it))
                     return@channelFlow
+                }
+
+                chunkIndex++
+                // 批次滑動窗口流控：每 8 塊 (4KB = 1 個 Flash Sector) 做微延遲，給 ESP32 SPI Flash 擦寫留足時間
+                // 其餘每包微間隔 3ms，確保不衝爆底層 BLE HCI 佇列
+                if (chunkIndex % 8 == 0) {
+                    kotlinx.coroutines.delay(18)
+                } else {
+                    kotlinx.coroutines.delay(3)
                 }
 
                 sent += chunk.size
@@ -176,6 +186,16 @@ class OtaUploader(
     private suspend fun writeErrorOrNull(characteristic: BleUuid, value: ByteArray): String? =
         try {
             transport.write(characteristic, value)
+            null
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Throwable) {
+            e.message ?: e.toString()
+        }
+
+    private suspend fun writeNoResponseErrorOrNull(characteristic: BleUuid, value: ByteArray): String? =
+        try {
+            transport.writeNoResponse(characteristic, value)
             null
         } catch (e: CancellationException) {
             throw e

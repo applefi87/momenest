@@ -18,14 +18,19 @@ interface GattTransport {
 
     /**
      * 寫入 characteristic，**Write With Response**——等設備確認才返回。
-     *
-     * 這是 OTA 的天然流量控制：設備把上一塊寫進 flash 後才回應，手機才送下一塊，
-     * 不會塞爆設備的接收緩衝。改成 Write Without Response 雖然快，
-     * 但要自己實作流控，風險高很多。
+     * 用於控制指令（BEGIN / END / ABORT）。
      *
      * @throws GattTransportException 寫入失敗或連線中斷
      */
     suspend fun write(characteristic: BleUuid, value: ByteArray)
+
+    /**
+     * 高速無應答寫入，**Write Without Response**。
+     * 用於 OTA 韌體資料串流，搭配適當的節流微延遲以達到極限 BLE 吞吐量。
+     *
+     * @throws GattTransportException 寫入失敗或連線中斷
+     */
+    suspend fun writeNoResponse(characteristic: BleUuid, value: ByteArray)
 
     /** 訂閱該 characteristic 的 notify 位元組流 */
     fun notifications(characteristic: BleUuid): Flow<ByteArray>

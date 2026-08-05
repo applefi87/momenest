@@ -281,6 +281,19 @@ internal class AndroidGattTransport(
         mtu = DEFAULT_MTU
     }
 
+    fun requestHighPriority(): Boolean =
+        gatt?.requestConnectionPriority(BluetoothGatt.CONNECTION_PRIORITY_HIGH) ?: false
+
+    fun requestPhy2M() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            gatt?.setPreferredPhy(
+                BluetoothDevice.PHY_LE_2M_MASK,
+                BluetoothDevice.PHY_LE_2M_MASK,
+                BluetoothDevice.PHY_OPTION_NO_PREFERRED,
+            )
+        }
+    }
+
     // ------------------------------------------------------------ GattTransport
 
     override suspend fun write(characteristic: BleUuid, value: ByteArray) {
@@ -314,6 +327,29 @@ internal class AndroidGattTransport(
                     if (cont.isActive) cont.resume(false)
                 } else {
                     writeCont = cont
+                }
+            }
+        }
+        if (!ok) throw GattTransportException("寫入 $characteristic 失敗（連線可能已中斷）")
+    }
+
+    override suspend fun writeNoResponse(characteristic: BleUuid, value: ByteArray) {
+        val ok = queue.execute {
+            val g = gatt ?: return@execute false
+            val ch = findCharacteristic(characteristic) ?: return@execute false
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                g.writeCharacteristic(
+                    ch,
+                    value,
+                    BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE,
+                ) == BluetoothStatusCodes.SUCCESS
+            } else {
+                @Suppress("DEPRECATION")
+                run {
+                    ch.writeType = BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE
+                    ch.value = value
+                    g.writeCharacteristic(ch)
                 }
             }
         }
