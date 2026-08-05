@@ -1,64 +1,8 @@
-# momenest — 環境監測系統
+# CLAUDE.md
 
-> **⚠ 動工前必讀 `DEV_NOTES.md`**：記錄此環境的 git index 損壞、掛載同步延遲等
-> 實際踩過的坑與標準對策。先讀完再開始開發。
+本專案的架構導覽已移到 [`README_ai.md`](README_ai.md)，
+因為不只 Claude 一種 AI（與人類協作者）需要讀它。
 
-ESP32 + 3.5" 觸控螢幕的環境監測器（空氣溫濕度/水溫/土壤濕度/水位），
-每 10 秒上傳 Cloudflare Worker (D1)，附網頁儀表板。
+這個檔案保留成一行轉接，是為了讓 Claude Code 仍會自動把內容載入上下文。
 
-## 目錄導覽（改東西前先看這張表，不用通讀全部檔案）
-
-| 想做的事 | 看這裡 |
-|---|---|
-| 改感測器腳位 / 量測時序 | `EnvMonitor/config.h` |
-| 改螢幕硬體 (SPI/觸控校正/顏色反相) | `EnvMonitor/display_hw.h` |
-| 改配色 / 版面座標 | `EnvMonitor/theme.h` |
-| 改介面文字 / 新增語言 | `EnvMonitor/lang.h`（內嵌 JSON，直接編輯） |
-| 主畫面繪製 / 觸控入口 | `EnvMonitor/ui_main.cpp` |
-| 校準編輯畫面 | `EnvMonitor/ui_edit.cpp` |
-| 感測器讀取邏輯 | `EnvMonitor/sensors.cpp` |
-| 校準值預設與 NVS 儲存 | `EnvMonitor/calibration.cpp` |
-| WiFi / 雲端上傳 / OTA | `EnvMonitor/net.cpp`（密鑰在 `secrets.h`，不進版控） |
-| 感測值→JSON 序列化 | `EnvMonitor/reading_format.*`（net/BLE 共用，有 host 單元測試） |
-| BLE 讀值服務 | `EnvMonitor/ble.cpp`（NimBLE，契約見 `EnvMonitor/BLE.md`） |
-| BLE OTA 韌體更新 | `EnvMonitor/ble_ota.cpp` + 協定 `ota_protocol.*`（有 host 單元測試） |
-| host 單元測試 | `EnvMonitor/tests/`（g++ 跑純邏輯，非硬體） |
-| 手機 BLE App | `cloud/src/ble-app.html`（Web Bluetooth，Android Chrome，路由 `/ble`） |
-| 雲端 API 邏輯 | `cloud/src/api.js`（D1 讀寫） |
-| 雲端網頁儀表板 | `cloud/src/dashboard.html`（路由 `/`，wrangler Text 模組內嵌） |
-| 雲端路由入口 | `cloud/src/index.js` |
-| 接線 | `EnvMonitor/WIRING.md` |
-
-## EnvMonitor（韌體）架構
-
-- 入口 `EnvMonitor.ino` 只有 setup/loop；1Hz 非阻塞量測時序由 `sensors.cpp` 的
-  `sensorsLoop()` 內部管理（T=0 觸發、T=800ms 探針上電→讀取→斷電）
-- 模組間以 extern 全域變數共享狀態：sensors 提供讀值、calibration 提供校準值、
-  net 提供 `uploadState`、ui 提供 `uiMode`
-- 校準值（土壤/水位 ADC 的 MIN=0% / MAX=100%）與語言選擇存 NVS（`Preferences`），
-  斷電保留；預設值寫死在 `calibration.cpp`
-- 多語系：`lang.h` 內嵌 JSON → `i18n.cpp` 以 ArduinoJson 解析；
-  中文用 LovyanGFX 內建 `efontTW_16`，英文用內建 Font2/Font4
-- 觸控為單次觸發（放開才能再按），防彈跳在 `EnvMonitor.ino` 的 loop
-- BLE 讀值（`ble.cpp`，`config.h` 的 `ENABLE_BLE` 開關）與 WiFi 上傳共用
-  `reading_format` 的 JSON 序列化；可測邏輯抽成純函式在 `tests/` 用 g++ 驗證（TDD）
-- BLE OTA（`ble_ota.cpp`，`ENABLE_BLE_OTA`）：手機傳 `.bin` 更新韌體，
-  OTA 期間主迴圈以 `otaIsActive()` 暫停 WiFi/量測讓出資源；失敗自動 abort
-  不動舊韌體（A/B 雙槽）。詳見 `BLE.md`
-- 依賴函式庫：LovyanGFX、OneWire、DallasTemperature、ArduinoJson、
-  NimBLE-Arduino（BLE，啟用 ENABLE_BLE 時）
-- flash 不足時：Partition Scheme 改 `Minimal SPIFFS (1.9MB APP with OTA)`
-  （保留 OTA 槽；用 BLE 時勿選 Huge APP，它無 OTA 槽）
-
-## cloud（Cloudflare Worker）
-
-- 三檔模組：`index.js` 路由入口、`api.js` D1 讀寫（`POST /api/ingest`
-  寫入需 X-API-Key、`GET /api/data`、`GET /api/latest`）、
-  `dashboard.html` 儀表板網頁（wrangler Text 規則 import 成字串）
-- D1 schema 見 `cloud/schema.sql`；部署 `wrangler deploy`
-
-## 慣例
-
-- ESP32 上傳的 soil / water_level 一律是「原始 ADC 值」；0~100% 換算只在顯示端做
-- 讀取失敗以 null 上傳（資料庫存 NULL）；土壤/水位讀到 0 視為感測器未接
-- commit 依功能段落拆分，不要一大包
+@README_ai.md

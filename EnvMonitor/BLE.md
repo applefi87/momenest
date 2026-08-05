@@ -1,10 +1,10 @@
 # BLE 讀值服務 — GATT 契約
 
 手機以 BLE 就近即時取得感測值；設備仍照常 WiFi 上傳雲端（WiFi + BLE 共存）。
-本檔是**設備端（`ble.cpp`）與手機端（原生 App `../android/`、備援網頁版
+本檔是**設備端（`ble.cpp`）與手機端（原生 App `../client/`、備援網頁版
 `../cloud/src/ble-app.html`）的單一事實來源**——改 UUID 或 JSON 格式時，
 所有端都要跟著改（Android 端的契約在
-`android/core/protocol/.../GattContract.kt`，須與本表逐字一致）。
+`client/core/protocol/.../GattContract.kt`，須與本表逐字一致）。
 
 ## 依賴與設定
 

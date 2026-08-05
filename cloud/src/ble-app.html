@@ -52,12 +52,22 @@ body{
 .progress-bar{height:100%;width:0;background:var(--accent);border-radius:11px;transition:width .2s;display:flex;align-items:center;justify-content:center;color:#fff;font-size:.7rem;font-weight:600}
 .ota-status{font-size:.82rem;color:var(--text-secondary);min-height:1.2em}
 .ota-status.ok{color:var(--ok)} .ota-status.bad{color:var(--err)}
+.fallback-note{
+  background:var(--card-bg);border:1px solid var(--card-border);border-radius:12px;
+  padding:10px 12px;margin-bottom:16px;font-size:.78rem;color:var(--text-secondary);line-height:1.5;
+}
+.fallback-note b{color:var(--text-primary);font-weight:600}
 .hint{font-size:.8rem;color:var(--text-secondary);line-height:1.6;margin-top:20px}
 .hint code{background:var(--card-bg);padding:1px 5px;border-radius:5px}
 .err{color:var(--err);font-size:.85rem;margin-top:12px}
 </style>
 </head>
 <body>
+
+<div class="fallback-note">
+  <b>網頁備援版</b>　主力已改為原生 Android App（支援 MTU 協商、OTA 傳輸 CRC 校驗、
+  顯示韌體版本）。本頁功能完整可用，適合臨時借手機或快速展示。
+</div>
 
 <div class="header">
   <h1>環境監測 · 藍牙</h1>
@@ -85,10 +95,16 @@ body{
 <div class="hint" id="hint">
   用 <b>Android Chrome</b> 開啟本頁 → 按「連接設備」→ 選 <code>env-monitor</code>。<br>
   需開啟手機藍牙（Android 首次可能要求定位權限以掃描藍牙）。<br>
-  資料為設備就近直傳，不經網路；設備仍照常上傳雲端。
+  資料為設備就近直傳，不經網路；設備仍照常上傳雲端。<br><br>
+  <b>與原生 App 的差異</b>：Web Bluetooth 不提供 MTU 查詢，本頁固定用 512 bytes
+  分塊；原生 App 會依實際協商到的 MTU 計算，並在 OTA 結束時附上整份韌體的
+  CRC32 讓設備比對。若這裡的更新一直失敗，改用原生 App 試試。
 </div>
 
 <script>
+// 這是 BLE 的網頁備援實作；主力在 ../../client/（Kotlin Multiplatform + Android）。
+// 兩邊的 GATT 契約必須同步，單一事實來源是 ../../EnvMonitor/BLE.md。
+//
 // GATT 契約：必須與設備端 ble.cpp / BLE.md 完全一致
 const SVC_UUID      = '8f2a0001-b8c3-4e6a-9f1d-2a7c9e5b1a01';
 const READINGS_UUID = '8f2a0002-b8c3-4e6a-9f1d-2a7c9e5b1a01';

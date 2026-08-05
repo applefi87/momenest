@@ -1,7 +1,7 @@
 # DEV_NOTES — 開發前必讀（環境陷阱與對策）
 
 此檔記錄在此 repo 開發時實際踩過的坑。**任何 AI/協作者動工前必須先讀完這份**，
-程式架構導覽則看 `CLAUDE.md`。
+程式架構導覽則看 `README_ai.md`（`CLAUDE.md` 只是一行轉接）。
 
 ## 1. Cowork/掛載環境的 git index 會被同步損壞（已踩過兩次）
 
@@ -39,7 +39,47 @@ git 高頻寫入 `.git/index` 時會跟同步機制打架；刪除檔案預設�
 - 驗證檔案內容以檔案工具（Windows 路徑）為準，VM 掛載路徑只當參考
 - 不要用 bash 直接寫掛載內的專案檔（會跟檔案工具的寫入互相覆蓋）
 
-## 3. 其他此專案的既有事實
+## 3. client/（Kotlin/Android）的環境陷阱
+
+### 3.1 開發機沒有 JDK / Gradle / Android SDK
+
+`client/` 底下的 Kotlin 程式碼**曾在沒有工具鏈的機器上撰寫**，
+意即那些檔案未必編譯驗證過。動它之前先確認本機有沒有：
+
+```bash
+java -version && gradle -v
+```
+
+沒有的話用 Android Studio 開 `client/` 資料夾（它自帶 JBR 與 SDK 管理），
+不要嘗試在沒有工具鏈的環境「靠讀程式碼確認能編譯」——這是本專案已經
+付出過代價的教訓。
+
+### 3.2 `gradle-wrapper.jar` 不在版控
+
+二進位檔刻意排除。取得方式：用 Android Studio 開啟資料夾（自動補），
+或已裝 Gradle 時執行 `gradle wrapper`。
+
+### 3.3 搬移 / 改名 client/ 會被 Android Studio 鎖住
+
+症狀：`mv client xxx` 回報 `Device or resource busy`。
+原因是 Android Studio 或 Gradle daemon 持有資料夾控制代碼。
+
+**對策**：先關掉 Android Studio（或 `./gradlew --stop`），
+再用 PowerShell 的 `Move-Item` 執行（有時 Git Bash 的 `mv` 仍失敗但
+`Move-Item` 可以）。移動後**務必刪掉** `.gradle/`、`.kotlin/`、`build/`，
+它們裡面存的是絕對路徑，留著會產生莫名其妙的建置錯誤。
+
+### 3.4 commonMain 不准出現 java.\* 或 android.\*
+
+`client/core/protocol` 是 KMP 模組並宣告了 iOS target。
+`commonMain` 一旦 import `java.util.UUID` 這類 JVM 專屬 API，
+**Android 端仍然編得過**（因為只編 jvm target），但 iOS target 會直接失敗——
+多平台就退化成「宣告了卻編不過」的假象。
+
+這個坑已經踩過一次：所以 UUID 用自訂的 `BleUuid`、CRC32 自己實作。
+改這個模組時請保持這條紅線。
+
+## 4. 其他此專案的既有事實
 
 - `secrets.h` 不進版控（`.gitignore`），新環境要從 `secrets.h.example` 複製
 - 螢幕面板顏色反相已在 `display_hw.h` 用 `pcfg.invert = true` 修正；
