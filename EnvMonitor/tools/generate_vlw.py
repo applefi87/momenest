@@ -17,9 +17,12 @@ import urllib.request
 from PIL import ImageFont
 
 # ==== 設定 ====
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+ENVMONITOR_DIR = os.path.dirname(SCRIPT_DIR)
+
 FONT_URL = "https://github.com/notofonts/noto-cjk/raw/main/Sans/OTF/TraditionalChinese/NotoSansCJKtc-Medium.otf"
-FONT_FILE = "NotoSansCJKtc-Medium.otf"
-LANG_H_PATH = "../lang.h"
+FONT_FILE = os.path.join(SCRIPT_DIR, "NotoSansCJKtc-Medium.otf")
+LANG_H_PATH = os.path.join(ENVMONITOR_DIR, "lang.h")
 
 # 要產生的字體規格
 FONTS = [
@@ -203,13 +206,13 @@ def main():
             char_set = set(spec["chars"])
 
         vlw, gcount = build_vlw(FONT_FILE, spec["size"], char_set)
-        output_path = f"../{spec['name']}.h"
+        output_path = os.path.join(ENVMONITOR_DIR, f"{spec['name']}.h")
         write_c_header(vlw, spec["name"], spec["desc"], spec["size"], gcount, output_path)
 
     # Validate format
     print("\n=== Validation ===")
     for spec in FONTS:
-        path = f"../{spec['name']}.h"
+        path = os.path.join(ENVMONITOR_DIR, f"{spec['name']}.h")
         if spec["chars"] == "all":
             n = len(all_chars)
         else:
